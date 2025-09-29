@@ -31,6 +31,7 @@ jobs:
       POSTGRES_PORT: 5432
       JWT_SECRET: test-secret-key-for-testing
       REFRESH_SECRET: test-refresh-secret-for-testing
+      TEST_DB_MODE: ci
 
     steps:
     - uses: actions/checkout@v4

@@ -26,8 +26,33 @@ func SetupMockDB() (*sql.DB, sqlmock.Sqlmock, error) {
 	return db, mock, nil
 }
 
-// SetupTestDB creates a real test database using dockertest
+// SetupTestDB creates a real test database using dockertest (local) or CI service
 func SetupTestDB() (*gorm.DB, func(), error) {
+	if os.Getenv("TEST_DB_MODE") == "ci" {
+		// Use CI service database
+		dbUser := os.Getenv("POSTGRES_USER")
+		dbPass := os.Getenv("POSTGRES_PASSWORD")
+		dbName := os.Getenv("POSTGRES_DB")
+		dbHost := os.Getenv("POSTGRES_HOST")
+		dbPort := os.Getenv("POSTGRES_PORT")
+
+		databaseUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPass, dbHost, dbPort, dbName)
+
+		db, err := gorm.Open(postgres.Open(databaseUrl), &gorm.Config{})
+		if err != nil {
+			return nil, nil, err
+		}
+		database.DB = db
+
+		// Auto-migrate test database
+		err = db.AutoMigrate(&models.User{}, &models.Post{}, &models.Comment{}, &models.Vote{}, &models.SubInvitation{}, &models.Sub{}, &models.SubMembership{}, &models.PasswordResetToken{})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// No teardown needed for CI
+		return db, func() {}, nil
+	}
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
 	if err != nil {
@@ -99,12 +124,22 @@ func SetupTestDB() (*gorm.DB, func(), error) {
 
 // TestMain is used for integration tests to set up environment
 func TestMain(m *testing.M, setupDB func() (*gorm.DB, func())) {
-	// Set test environment variables
-	os.Setenv("POSTGRES_HOST", "localhost")
-	os.Setenv("POSTGRES_USER", "cortex_user")
-	os.Setenv("POSTGRES_PASSWORD", "cortex_pass")
-	os.Setenv("POSTGRES_DB", "cortex_db")
-	os.Setenv("POSTGRES_PORT", "5432")
+	// Set test environment variables only if not already set
+	if os.Getenv("POSTGRES_HOST") == "" {
+		os.Setenv("POSTGRES_HOST", "localhost")
+	}
+	if os.Getenv("POSTGRES_USER") == "" {
+		os.Setenv("POSTGRES_USER", "cortex_user")
+	}
+	if os.Getenv("POSTGRES_PASSWORD") == "" {
+		os.Setenv("POSTGRES_PASSWORD", "cortex_pass")
+	}
+	if os.Getenv("POSTGRES_DB") == "" {
+		os.Setenv("POSTGRES_DB", "cortex_db")
+	}
+	if os.Getenv("POSTGRES_PORT") == "" {
+		os.Setenv("POSTGRES_PORT", "5432")
+	}
 
 	if setupDB != nil {
 		// For integration tests, set up real DB
