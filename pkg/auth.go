@@ -10,9 +10,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// ✅ Read values from environment variables
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
-
 // AuthMiddleware extracts and verifies the JWT token
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -38,6 +35,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Parse and verify the JWT token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			// Replace this with your secret key
+			jwtSecret := os.Getenv("JWT_SECRET")
 			return []byte(jwtSecret), nil
 		})
 
