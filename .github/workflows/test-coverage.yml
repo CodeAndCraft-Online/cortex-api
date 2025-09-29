@@ -31,6 +31,8 @@ jobs:
       POSTGRES_PASSWORD: cortex_pass
       POSTGRES_DB: cortex_db
       POSTGRES_PORT: 5432
+      JWT_SECRET: test-secret-key-for-testing
+      REFRESH_SECRET: test-refresh-secret-for-testing
 
     steps:
     - uses: actions/checkout@v4
