@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/CodeAndCraft-Online/cortex-api/internal/database"
 	"github.com/CodeAndCraft-Online/cortex-api/internal/models"
@@ -18,7 +20,8 @@ func TestMain(m *testing.M) {
 	db, teardown, err := testutils.SetupTestDB()
 	if err != nil {
 		println("Docker not available, skipping handler integration tests:", err.Error())
-		return
+		database.DB = nil // Ensure no stale database connection
+		os.Exit(0)        // Skip all tests in this package
 	}
 
 	database.DB = db
@@ -106,8 +109,9 @@ func TestResetPasswordHandler(t *testing.T) {
 	database.DB.Create(&user)
 
 	resetToken := models.PasswordResetToken{
-		UserID: user.ID,
-		Token:  "handlertoken123",
+		UserID:    user.ID,
+		Token:     "handlertoken123",
+		ExpiresAt: time.Now().Add(1 * time.Hour),
 	}
 	database.DB.Create(&resetToken)
 
@@ -156,6 +160,6 @@ func TestResetPasswordHandler_InvalidToken(t *testing.T) {
 	// Perform request
 	router.ServeHTTP(w, req)
 
-	// Check response - should be error (implementation returns nothing on error)
-	assert.Equal(t, http.StatusOK, w.Code) // This might need adjustment based on actual handler
+	// Check response - should be error
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

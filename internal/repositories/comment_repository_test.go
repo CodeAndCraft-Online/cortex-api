@@ -11,9 +11,14 @@ import (
 // TestMain is defined in auth_repository_test.go for the repositories package
 
 func TestGetCommentsByPostID(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
 	// Create test user
 	user := models.User{
-		Username: "commentuser",
+		Username: "getcommentsuser",
 		Password: "password",
 	}
 	database.DB.Create(&user)
@@ -57,7 +62,7 @@ func TestGetCommentsByPostID(t *testing.T) {
 
 		// Check first comment
 		firstComment := (*comments)[0]
-		assert.Equal(t, "commentuser", firstComment.Username)
+		assert.Equal(t, "getcommentsuser", firstComment.Username)
 		assert.Contains(t, []string{"First comment", "Second comment"}, firstComment.Content)
 	})
 
@@ -89,6 +94,11 @@ func TestGetCommentsByPostID(t *testing.T) {
 }
 
 func TestCreateComment(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
 	// Create test user
 	user := models.User{
 		Username: "createcommentuser",

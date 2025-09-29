@@ -10,12 +10,13 @@ import (
 
 func TestUser_JSONSerialization(t *testing.T) {
 	// Create a test user
+	refreshToken := "refreshtoken123"
 	user := User{
 		ID:           1,
 		Username:     "testuser",
 		Password:     "hashedpassword",
 		CreatedAt:    time.Now(),
-		RefreshToken: "refreshtoken123",
+		RefreshToken: &refreshToken,
 		TokenExpires: time.Now().Add(24 * time.Hour),
 	}
 
@@ -54,7 +55,7 @@ func TestUser_JSONUnmarshaling(t *testing.T) {
 	assert.Equal(t, uint(1), user.ID)
 	assert.Equal(t, "testuser", user.Username)
 	assert.Equal(t, "hashedpassword", user.Password)
-	assert.Equal(t, "refreshtoken123", user.RefreshToken)
+	assert.Equal(t, "refreshtoken123", *user.RefreshToken)
 
 	// Verify timestamps were parsed
 	expectedCreatedAt, _ := time.Parse(time.RFC3339, "2023-01-01T00:00:00Z")
@@ -71,21 +72,22 @@ func TestUser_EmptyStruct(t *testing.T) {
 	assert.Equal(t, "", user.Username)
 	assert.Equal(t, "", user.Password)
 	assert.True(t, user.CreatedAt.IsZero())
-	assert.Equal(t, "", user.RefreshToken)
+	assert.Nil(t, user.RefreshToken)
 	assert.True(t, user.TokenExpires.IsZero())
 }
 
 func TestUser_StructFields(t *testing.T) {
+	token := "token"
 	user := User{
 		ID:           1,
 		Username:     "testuser",
 		Password:     "password",
-		RefreshToken: "token",
+		RefreshToken: &token,
 	}
 
 	// Test field assignments
 	assert.Equal(t, uint(1), user.ID)
 	assert.Equal(t, "testuser", user.Username)
 	assert.Equal(t, "password", user.Password)
-	assert.Equal(t, "token", user.RefreshToken)
+	assert.Equal(t, "token", *user.RefreshToken)
 }

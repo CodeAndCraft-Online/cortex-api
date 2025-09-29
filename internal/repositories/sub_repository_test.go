@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/CodeAndCraft-Online/cortex-api/internal/database"
@@ -11,6 +12,17 @@ import (
 // TestMain is defined in auth_repository_test.go for the repositories package
 
 func TestGetSubs(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
 	// Create test users
 	user1 := models.User{Username: "user1", Password: "password"}
 	user2 := models.User{Username: "user2", Password: "password"}
@@ -65,6 +77,17 @@ func TestGetSubs(t *testing.T) {
 }
 
 func TestCreateSub(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
 	// Create test user
 	user := models.User{Username: "createsubuser", Password: "password"}
 	database.DB.Create(&user)
@@ -117,6 +140,17 @@ func TestCreateSub(t *testing.T) {
 }
 
 func TestJoinSub(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
 	// Create test users
 	user := models.User{Username: "joinuser", Password: "password"}
 	otherUser := models.User{Username: "otheruser", Password: "password"}
@@ -130,7 +164,7 @@ func TestJoinSub(t *testing.T) {
 	database.DB.Create(&privateSub)
 
 	t.Run("join public sub", func(t *testing.T) {
-		membership, err := JoinSub("joinuser", "1") // Assuming ID is 1
+		membership, err := JoinSub("joinuser", fmt.Sprintf("%d", publicSub.ID))
 
 		assert.NoError(t, err)
 		assert.NotNil(t, membership)
@@ -139,7 +173,7 @@ func TestJoinSub(t *testing.T) {
 	})
 
 	t.Run("join private sub without invitation", func(t *testing.T) {
-		membership, err := JoinSub("joinuser", "2") // Assuming private sub ID is 2
+		membership, err := JoinSub("joinuser", fmt.Sprintf("%d", privateSub.ID))
 
 		assert.Error(t, err)
 		assert.Nil(t, membership)
@@ -156,6 +190,19 @@ func TestJoinSub(t *testing.T) {
 }
 
 func TestListSubPosts(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM posts")
+	database.DB.Exec("DELETE FROM votes")
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
 	// Create test users
 	user := models.User{Username: "postuser", Password: "password"}
 	memberUser := models.User{Username: "memberuser", Password: "password"}
@@ -178,7 +225,7 @@ func TestListSubPosts(t *testing.T) {
 	database.DB.Create(&publicPost)
 
 	t.Run("list posts from public sub", func(t *testing.T) {
-		posts, err := ListSubPosts("1", "") // Assuming public sub ID is 1
+		posts, err := ListSubPosts(fmt.Sprintf("%d", publicSub.ID), "")
 
 		assert.NoError(t, err)
 		assert.NotNil(t, posts)
@@ -190,11 +237,11 @@ func TestListSubPosts(t *testing.T) {
 	})
 
 	t.Run("list posts from private sub without membership", func(t *testing.T) {
-		posts, err := ListSubPosts("2", "") // Assuming private sub ID is 2
+		posts, err := ListSubPosts(fmt.Sprintf("%d", privateSub.ID), "")
 
 		assert.Error(t, err)
 		assert.Nil(t, posts)
-		assert.Contains(t, err.Error(), "this is a private sub")
+		assert.Contains(t, err.Error(), "Please log in to view posts")
 	})
 
 	t.Run("list posts from non-existent sub", func(t *testing.T) {
@@ -207,6 +254,17 @@ func TestListSubPosts(t *testing.T) {
 }
 
 func TestLeaveSub(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
 	// Create test users
 	user := models.User{Username: "leaveuser", Password: "password"}
 	database.DB.Create(&user)
@@ -220,7 +278,7 @@ func TestLeaveSub(t *testing.T) {
 	database.DB.Create(&membership)
 
 	t.Run("leave sub successfully", func(t *testing.T) {
-		result, err := LeaveSub("1", "leaveuser") // Assuming sub ID is 1
+		result, err := LeaveSub(fmt.Sprintf("%d", sub.ID), "leaveuser")
 
 		assert.NoError(t, err)
 		assert.NotNil(t, result)

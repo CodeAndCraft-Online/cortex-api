@@ -11,7 +11,32 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// IAuthRepository defines methods for authentication repository
+type IAuthRepository interface {
+	ResetPasswordRequest(username string) (*models.PasswordResetToken, error)
+	ResetPassword(token, newPassword string) error
+}
+
+// AuthRepository implements IAuthRepository
+type AuthRepository struct{}
+
+// NewAuthRepository creates a new auth repository
+func NewAuthRepository() IAuthRepository {
+	return &AuthRepository{}
+}
+
+// Legacy global functions for backward compatibility
 func ResetPasswordRequest(username string) (*models.PasswordResetToken, error) {
+	repo := NewAuthRepository()
+	return repo.ResetPasswordRequest(username)
+}
+
+func ResetPassword(token, newPassword string) error {
+	repo := NewAuthRepository()
+	return repo.ResetPassword(token, newPassword)
+}
+
+func (r *AuthRepository) ResetPasswordRequest(username string) (*models.PasswordResetToken, error) {
 
 	// Find user by username
 	var user models.User
@@ -36,17 +61,7 @@ func ResetPasswordRequest(username string) (*models.PasswordResetToken, error) {
 	return &resetToken, nil
 }
 
-// GenerateToken creates a random token
-func GenerateToken() (string, error) {
-	bytes := make([]byte, 32)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-func ResetPassword(token, newPassword string) error {
+func (r *AuthRepository) ResetPassword(token, newPassword string) error {
 	// Find the token
 	var resetToken models.PasswordResetToken
 	if err := db.DB.Where("token = ?", token).First(&resetToken).Error; err != nil {
@@ -77,6 +92,16 @@ func ResetPassword(token, newPassword string) error {
 	// Delete used reset token
 	db.DB.Delete(&resetToken)
 	return nil
+}
+
+// GenerateToken creates a random token
+func GenerateToken() (string, error) {
+	bytes := make([]byte, 32)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
 
 // HashPassword hashes a password using bcrypt

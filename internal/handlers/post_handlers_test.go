@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -37,6 +38,11 @@ func setupPostTestRouter() *gin.Engine {
 }
 
 func TestGetPostByIDHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	router := setupPostTestRouter()
 
 	// Create test data
@@ -69,6 +75,11 @@ func TestGetPostByIDHandler(t *testing.T) {
 }
 
 func TestGetPostByIDHandler_PostNotFound(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	router := setupPostTestRouter()
 
 	// Test with non-existent post
@@ -85,11 +96,16 @@ func TestGetPostByIDHandler_PostNotFound(t *testing.T) {
 }
 
 func TestCreatePostHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	router := setupPostTestRouter()
 
-	// Create test user and sub
-	user := models.User{Username: "createposthandleruser", Password: "password"}
-	database.DB.Create(&user)
+	// Find or create test user
+	user := models.User{Username: "testuser"}
+	database.DB.Where("username = ?", "testuser").FirstOrCreate(&user)
 
 	sub := models.Sub{Name: "createposthandlersub", OwnerID: user.ID}
 	database.DB.Create(&sub)
@@ -113,11 +129,16 @@ func TestCreatePostHandler(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "New Post via Handler", response["title"])
-	assert.Equal(t, float64(user.ID), response["userID"])
+	assert.Equal(t, "New Post via Handler", response["Title"])
+	assert.Equal(t, float64(user.ID), response["UserID"])
 }
 
 func TestGetPostsHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	router := setupPostTestRouter()
 
 	// Create test data
@@ -149,11 +170,19 @@ func TestGetPostsHandler(t *testing.T) {
 }
 
 func TestCreateCommentHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
+	// Clear comments to avoid ID conflicts
+	database.DB.Exec("TRUNCATE TABLE comments RESTART IDENTITY CASCADE")
+
 	router := setupPostTestRouter()
 
-	// Create test user and post
-	user := models.User{Username: "commenthandleruser", Password: "password"}
-	database.DB.Create(&user)
+	// Find or create test user
+	user := models.User{Username: "testuser"}
+	database.DB.Where("username = ?", "testuser").FirstOrCreate(&user)
 
 	sub := models.Sub{Name: "commenthandlersub", OwnerID: user.ID}
 	database.DB.Create(&sub)
@@ -174,7 +203,7 @@ func TestCreateCommentHandler(t *testing.T) {
 	jsonData, _ := json.Marshal(commentData)
 
 	// Create test request
-	req, _ := http.NewRequest("POST", "/posts/1/comments", bytes.NewBuffer(jsonData))
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/posts/%d/comments", post.ID), bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -185,10 +214,15 @@ func TestCreateCommentHandler(t *testing.T) {
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
 	assert.Equal(t, "This is a test comment from handler", response["content"])
-	assert.Equal(t, "commenthandleruser", response["username"])
+	assert.Equal(t, "testuser", response["username"])
 }
 
 func TestGetCommentsByPostIDHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	router := setupPostTestRouter()
 
 	// Create test data
@@ -214,7 +248,7 @@ func TestGetCommentsByPostIDHandler(t *testing.T) {
 	database.DB.Create(&comment)
 
 	// Test GET comments
-	req, _ := http.NewRequest("GET", "/posts/1/comments", nil)
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/posts/%d/comments", post.ID), nil)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)

@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/CodeAndCraft-Online/cortex-api/internal/database"
@@ -11,9 +12,20 @@ import (
 // Note: TestMain is defined in auth_repository_test.go for the repositories package
 
 func TestGetPostByID(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM votes")
+	database.DB.Exec("DELETE FROM posts")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
 	// Create test user
 	user := models.User{
-		Username: "testuser",
+		Username: "getpostuser",
 		Password: "password",
 	}
 	database.DB.Create(&user)
@@ -35,13 +47,13 @@ func TestGetPostByID(t *testing.T) {
 	database.DB.Create(&post)
 
 	t.Run("valid post ID", func(t *testing.T) {
-		response, err := GetPostByID("1") // Assuming ID is 1
+		response, err := GetPostByID(fmt.Sprintf("%d", post.ID))
 
 		assert.NoError(t, err)
 		assert.NotNil(t, response)
 		assert.Equal(t, "Test Post", response.Title)
 		assert.Equal(t, "Test content", response.Content)
-		assert.Equal(t, "testuser", response.Username)
+		assert.Equal(t, "getpostuser", response.Username)
 	})
 
 	t.Run("invalid post ID", func(t *testing.T) {
@@ -54,6 +66,16 @@ func TestGetPostByID(t *testing.T) {
 }
 
 func TestFindAllPosts(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM posts")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
 	// Create test user
 	user := models.User{
 		Username: "allpostsuser",
@@ -84,6 +106,16 @@ func TestFindAllPosts(t *testing.T) {
 }
 
 func TestCreatePost(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM posts")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
 	// Create test user
 	user := models.User{
 		Username: "createuser",
@@ -101,11 +133,10 @@ func TestCreatePost(t *testing.T) {
 	newPost := models.Post{
 		Title:   "New Post",
 		Content: "New content",
-		UserID:  user.ID,
 		SubID:   sub.ID,
 	}
 
-	createdPost, err := CreatPost("createuser", newPost)
+	createdPost, err := CreatePost("createuser", newPost)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, createdPost)

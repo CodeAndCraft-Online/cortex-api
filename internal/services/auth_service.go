@@ -7,20 +7,43 @@ import (
 	"github.com/CodeAndCraft-Online/cortex-api/internal/repositories"
 )
 
+// AuthService handles authentication business logic
+type AuthService struct {
+	authRepo repositories.IAuthRepository
+}
+
+// NewAuthService creates a new auth service with dependency injection
+func NewAuthService(authRepo repositories.IAuthRepository) *AuthService {
+	return &AuthService{
+		authRepo: authRepo,
+	}
+}
+
 // GetPostByID fetches a single post by ID
-func ResetPasswordRequest(username string) (*models.PasswordResetToken, error) {
-	user, err := repositories.ResetPasswordRequest(username)
+func (s *AuthService) ResetPasswordRequest(username string) (*models.PasswordResetToken, error) {
+	user, err := s.authRepo.ResetPasswordRequest(username)
 	if err != nil {
-		return nil, errors.New("post not found")
+		return nil, errors.New("user not found")
 	}
 	return user, nil
 }
 
-func ResetPassword(token, newPassword string) error {
-	err := repositories.ResetPassword(token, newPassword)
+func (s *AuthService) ResetPassword(token, newPassword string) error {
+	err := s.authRepo.ResetPassword(token, newPassword)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// Legacy global functions for backward compatibility
+func ResetPasswordRequest(username string) (*models.PasswordResetToken, error) {
+	service := NewAuthService(repositories.NewAuthRepository())
+	return service.ResetPasswordRequest(username)
+}
+
+func ResetPassword(token, newPassword string) error {
+	service := NewAuthService(repositories.NewAuthRepository())
+	return service.ResetPassword(token, newPassword)
 }

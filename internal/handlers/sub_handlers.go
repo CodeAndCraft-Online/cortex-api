@@ -9,8 +9,13 @@ import (
 
 // GetSubs returns public subs + private subs for authorized users
 func GetSubs(c *gin.Context) {
+	username, exists := c.Get("username")
+	user := ""
+	if exists {
+		user = username.(string)
+	}
 
-	subs, err := services.GetSubs(c.Param("username"))
+	subs, err := services.GetSubs(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
 		return
@@ -21,14 +26,21 @@ func GetSubs(c *gin.Context) {
 
 // CreateSub allows users to create a new subreddit
 func CreateSub(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	var subRequest struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 		Private     bool   `json:"private"`
 	}
 
-	newSub, err := services.CreateSub(c.Param("username"), subRequest)
+	newSub, err := services.CreateSub(username.(string), subRequest)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -42,9 +54,15 @@ func CreateSub(c *gin.Context) {
 
 // JoinSub allows users to join a subreddit (only public or invited private subs)
 func JoinSub(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-	sub, err := services.JoinSub(c.Param("username"), c.Param("subID"))
+	sub, err := services.JoinSub(username.(string), c.Param("subID"))
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -53,13 +71,19 @@ func JoinSub(c *gin.Context) {
 
 // InviteUser allows sub owners to invite users to a private sub
 func InviteUser(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	var inviteRequest struct {
 		InviteeUsername string `json:"invitee"`
 	}
 
-	err := services.InviteUser(c.Param("subID"), c.Param("username"), inviteRequest)
+	err := services.InviteUser(c.Param("subID"), username.(string), inviteRequest)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -68,10 +92,15 @@ func InviteUser(c *gin.Context) {
 
 // AcceptInvite allows users to accept an invitation
 func AcceptInvite(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-	err := services.AcceptInvite(c.Param("inviteID"), c.Param("username"))
+	err := services.AcceptInvite(c.Param("inviteID"), username.(string))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -80,10 +109,15 @@ func AcceptInvite(c *gin.Context) {
 
 // ListSubPosts fetches all posts for a specific sub
 func ListSubPosts(c *gin.Context) {
+	username, exists := c.Get("username")
+	user := ""
+	if exists {
+		user = username.(string)
+	}
 
-	formattedPosts, err := services.ListSubPosts(c.Param("subID"), c.Param("username"))
+	formattedPosts, err := services.ListSubPosts(c.Param("subID"), user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -92,10 +126,15 @@ func ListSubPosts(c *gin.Context) {
 
 // LeaveSub allows users to leave a subreddit
 func LeaveSub(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-	sub, err := services.LeaveSub(c.Param("subID"), c.Param("username"))
+	sub, err := services.LeaveSub(c.Param("subID"), username.(string))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -104,10 +143,15 @@ func LeaveSub(c *gin.Context) {
 
 // Get a count of how many posts are in a sub
 func GetPostCountPerSub(c *gin.Context) {
+	username, exists := c.Get("username")
+	user := ""
+	if exists {
+		user = username.(string)
+	}
 
-	postCount, err := services.GetPostCountPerSub(c.Param("subID"), c.Param("username"))
+	postCount, err := services.GetPostCountPerSub(c.Param("subID"), user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

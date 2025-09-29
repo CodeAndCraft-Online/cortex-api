@@ -189,8 +189,8 @@ func ListSubPosts(subID, username string) (*[]models.PostResponse, error) {
 
 	// ✅ If the sub is private, check if the user is a member
 	if sub.Private {
-		if username != "" {
-			return nil, fmt.Errorf("this is a private sub. Join to view posts")
+		if username == "" {
+			return nil, fmt.Errorf("this is a private sub. Please log in to view posts")
 		}
 
 		var user models.User
@@ -265,8 +265,8 @@ func GetPostCountPerSub(subID, username string) (int, error) {
 
 	// ✅ If the sub is private, check if the user is a member
 	if sub.Private {
-		if username != "" {
-			return -1, fmt.Errorf("this is a private sub. join to view posts")
+		if username == "" {
+			return -1, fmt.Errorf("this is a private sub. Please log in to view post count")
 		}
 
 		var user models.User

@@ -39,11 +39,13 @@ func CreatePost(c *gin.Context) {
 		return
 	}
 
-	postResponse, err := services.CreatPost(c.Param("username"), post)
+	username, _ := c.Get("username")
+	postResponse, err := services.CreatePost(username.(string), post)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err,
 		})
+		return
 	}
 
 	c.JSON(http.StatusCreated, postResponse)
@@ -107,14 +109,9 @@ func CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment, err := services.CreateComment(c.Param("username"), commentReq, post)
+	comment, err := services.CreateComment(username.(string), commentReq, post)
 	if err != nil {
-		return
-	}
-
-	// Save the comment to the database
-	if err := db.DB.Create(&comment).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create comment"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

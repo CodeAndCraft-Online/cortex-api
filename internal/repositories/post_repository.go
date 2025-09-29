@@ -13,7 +13,7 @@ func GetPostByID(postID string) (*models.PostResponse, error) {
 	var upvotes, downvotes int64
 
 	var post models.Post
-	if err := db.DB.Where("id = ?", postID).First(&post).Error; err != nil {
+	if err := db.DB.Preload("User").Where("id = ?", postID).First(&post).Error; err != nil {
 		return nil, errors.New("post not found")
 	}
 
@@ -46,7 +46,7 @@ func FindAllPosts() ([]models.Post, error) {
 	return posts, nil
 }
 
-func CreatPost(username string, post models.Post) (*models.Post, error) {
+func CreatePost(username string, post models.Post) (*models.Post, error) {
 
 	var user models.User
 	if err := db.DB.Where("username = ?", username).First(&user).Error; err != nil {

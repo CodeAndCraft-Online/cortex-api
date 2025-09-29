@@ -21,8 +21,8 @@ func GetAllPosts() ([]models.Post, error) {
 	return repositories.FindAllPosts()
 }
 
-func CreatPost(username string, post models.Post) (*models.Post, error) {
-	newPost, err := repositories.CreatPost(username, post)
+func CreatePost(username string, post models.Post) (*models.Post, error) {
+	newPost, err := repositories.CreatePost(username, post)
 	if err != nil {
 		return nil, err
 	}

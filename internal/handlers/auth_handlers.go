@@ -47,6 +47,7 @@ func ResetPassword(c *gin.Context) {
 
 	err := services.ResetPassword(request.Token, request.NewPassword)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

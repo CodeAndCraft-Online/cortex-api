@@ -14,16 +14,21 @@ import (
 	"gorm.io/gorm"
 )
 
+var dbAvailable = true // Track if database is available for integration tests
+
 func TestMain(m *testing.M) {
-	// Try to set up test DB - if Docker not available, skip all tests in this package
+	// Try to set up test DB - if Docker not available, set flag but don't skip
 	db, teardown, err := testutils.SetupTestDB()
 	if err != nil {
-		log.Printf("Docker not available, skipping all repository tests: %v", err)
-		return // Skip all tests in this package
+		log.Printf("Docker not available, skipping repository integration tests: %v", err)
+		dbAvailable = false
+		database.DB = nil // Explicitly ensure DB is nil when setup fails
+		// Don't return here - let unit tests run without DB
+	} else {
+		database.DB = db
+		defer teardown()
 	}
-	defer teardown()
 
-	database.DB = db
 	os.Exit(m.Run())
 }
 
@@ -49,6 +54,11 @@ func TestHashPassword(t *testing.T) {
 }
 
 func TestResetPasswordIntegration(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	// Create test user
 	user := models.User{
 		Username: "testuser",
@@ -100,6 +110,11 @@ func TestResetPassword_InvalidToken(t *testing.T) {
 }
 
 func TestResetPassword_ExpiredToken(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	// Create test user
 	user := models.User{
 		Username: "expireduser",

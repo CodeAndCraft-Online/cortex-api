@@ -7,6 +7,6 @@ type User struct {
 	Username     string `gorm:"unique"`
 	Password     string
 	CreatedAt    time.Time
-	RefreshToken string `gorm:"unique"`
+	RefreshToken *string `gorm:"unique"`
 	TokenExpires time.Time
 }
