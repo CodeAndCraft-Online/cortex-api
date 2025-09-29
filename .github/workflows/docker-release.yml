@@ -1,6 +1,8 @@
 name: Docker Release
 
 on:
+  push:
+    branches: [ main, develop ]
   release:
     types: [published]
 
@@ -32,6 +34,7 @@ jobs:
           images: ghcr.io/CodeAndCraft-Online/cortex-api
           tags: |
             type=ref,event=tag
+            type=sha
 
       - name: Build and push
         uses: docker/build-push-action@v5
