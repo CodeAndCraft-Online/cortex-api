@@ -1,0 +1,202 @@
+basePath: /api
+definitions:
+  models.User:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      password:
+        type: string
+      refreshToken:
+        type: string
+      tokenExpires:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@cortex-api.com
+    name: CodeAndCraft Online
+    url: https://github.com/CodeAndCraft-Online/cortex-api
+  description: Cortex API is a Reddit-like social media platform backend API built
+    with Go and PostgreSQL.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Cortex API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user with username and password, returns a JWT
+        token
+      parameters:
+      - description: Login credentials - username and password
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'token: JWT access token'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request - username and password required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Invalid credentials'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User Login
+      tags:
+      - Auth
+  /auth/password-reset/request:
+    post:
+      consumes:
+      - application/json
+      description: Generates a password reset token for the specified username
+      parameters:
+      - description: Username for password reset
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Reset token generated. Use it to reset your password.,
+            token: Reset token'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: Bad request or username required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: User not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request Password Reset
+      tags:
+      - Auth
+  /auth/password-reset/reset:
+    post:
+      consumes:
+      - application/json
+      description: Resets a user's password using a valid reset token
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Password has been reset successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request, invalid token, or weak password'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Token not found or expired'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset Password
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account with username and password
+      parameters:
+      - description: User registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: User registered successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request - username and password required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'error: Username already taken'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - Auth
+securityDefinitions:
+  BearerAuth:
+    description: '"JWT Authorization header using the Bearer scheme. Example: \"Authorization:
+      Bearer {token}\""'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
