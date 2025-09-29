@@ -8,7 +8,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// GetSubs returns public subs + private subs for authorized users
+// @Summary Get all subs
+// @Description Returns all public subs and private subs the user is authorized to access
+// @Tags Subs
+// @Produce json
+// @Success 200 {array} interface{} "Array of available subs"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /subs/ [get]
 func GetSubs(c *gin.Context) {
 	username, exists := c.Get("username")
 	user := ""
@@ -25,7 +32,18 @@ func GetSubs(c *gin.Context) {
 	c.JSON(http.StatusOK, subs)
 }
 
-// CreateSub allows users to create a new subreddit
+// @Summary Create a new sub
+// @Description Creates a new subreddit (community)
+// @Tags Subs
+// @Accept json
+// @Produce json
+// @Param sub body models.SubRequest true "Sub creation data"
+// @Success 201 {object} interface{} "Created sub with ID and details"
+// @Failure 400 {object} map[string]string "error: Bad request or sub name already taken"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /subs/ [post]
 func CreateSub(c *gin.Context) {
 	username, exists := c.Get("username")
 	if !exists {
