@@ -1,9 +1,8 @@
 # Cortex API
 
 ![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)
-![Docker](https://img.shields.io/badge/docker-ghcr.io/CodeAndCraft--Online/cortex--api-blue?logo=docker)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io%2FCodeAndCraft--Online%2Fcortex--api-blue?logo=docker)](https://github.com/CodeAndCraft-Online/cortex-api/pkgs/container/cortex-api)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Release](https://img.shields.io/github/v/release/CodeAndCraft-Online/cortex-api?color=blue)
 [![CI](https://github.com/CodeAndCraft-Online/cortex-api/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/CodeAndCraft-Online/cortex-api/actions/workflows/test-coverage.yml)
 [![Test Coverage](https://codecov.io/gh/CodeAndCraft-Online/cortex-api/branch/main/graph/badge.svg)](https://codecov.io/gh/CodeAndCraft-Online/cortex-api)
 
