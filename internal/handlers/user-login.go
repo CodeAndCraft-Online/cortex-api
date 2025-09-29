@@ -14,12 +14,15 @@ import (
 var jwtSecret = []byte("your-secret-key")
 
 // @Summary User Login
-// @Description Authenticates a user and returns a JWT token
+// @Description Authenticates a user with username and password, returns a JWT token
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]string "Success"
-// @Failure 400 {object} map[string]string "Bad request"
+// @Param request body map[string]string true "Login credentials - username and password"
+// @Success 200 {object} map[string]string "token: JWT access token"
+// @Failure 400 {object} map[string]string "error: Bad request - username and password required"
+// @Failure 401 {object} map[string]string "error: Invalid credentials"
+// @Failure 500 {object} map[string]string "error: Internal server error"
 // @Router /auth/login [post]
 func Login(c *gin.Context) {
 	var user models.User

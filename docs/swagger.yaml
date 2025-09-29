@@ -1,0 +1,818 @@
+basePath: /api
+definitions:
+  models.CommentRequest:
+    properties:
+      content:
+        type: string
+      imageURL:
+        description: Link to an image
+        type: string
+      postID:
+        type: integer
+    type: object
+  models.InviteRequest:
+    properties:
+      invitee:
+        type: string
+    type: object
+  models.Post:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      downvotes:
+        type: integer
+      id:
+        type: integer
+      imageURL:
+        description: Link to an image
+        type: string
+      subID:
+        type: integer
+      title:
+        type: string
+      upvotes:
+        type: integer
+      user:
+        $ref: '#/definitions/models.User'
+      userID:
+        type: integer
+    type: object
+  models.SubRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      private:
+        type: boolean
+    type: object
+  models.User:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      password:
+        type: string
+      refreshToken:
+        type: string
+      tokenExpires:
+        type: string
+      username:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@cortex-api.com
+    name: CodeAndCraft Online
+    url: https://github.com/CodeAndCraft-Online/cortex-api
+  description: Cortex API is a Reddit-like social media platform backend API built
+    with Go and PostgreSQL.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  title: Cortex API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user with username and password, returns a JWT
+        token
+      parameters:
+      - description: Login credentials - username and password
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'token: JWT access token'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request - username and password required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Invalid credentials'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User Login
+      tags:
+      - Auth
+  /auth/password-reset/request:
+    post:
+      consumes:
+      - application/json
+      description: Generates a password reset token for the specified username
+      parameters:
+      - description: Username for password reset
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Reset token generated. Use it to reset your password.,
+            token: Reset token'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'error: Bad request or username required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: User not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request Password Reset
+      tags:
+      - Auth
+  /auth/password-reset/reset:
+    post:
+      consumes:
+      - application/json
+      description: Resets a user's password using a valid reset token
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Password has been reset successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request, invalid token, or weak password'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Token not found or expired'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset Password
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account with username and password
+      parameters:
+      - description: User registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: User registered successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request - username and password required'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: 'error: Username already taken'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - Auth
+  /posts/:
+    get:
+      description: Retrieves all posts with user details and comment/vote counts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of posts with user and vote details
+          schema:
+            items: {}
+            type: array
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all posts
+      tags:
+      - Posts
+    post:
+      consumes:
+      - application/json
+      description: Creates a new post for the authenticated user
+      parameters:
+      - description: Post data
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/models.Post'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created post with details
+          schema: {}
+        "400":
+          description: 'error: Bad request or validation error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: must login to post'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new post
+      tags:
+      - Posts
+  /posts/{postID}:
+    get:
+      description: Retrieves a specific post with user details and comment count
+      parameters:
+      - description: Post ID
+        in: path
+        name: postID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post with user and comment details
+          schema: {}
+        "404":
+          description: 'error: Post not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get post by ID
+      tags:
+      - Posts
+  /posts/comments:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new comment on a specified post
+      parameters:
+      - description: Comment data with postID
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/models.CommentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created comment with details
+          schema: {}
+        "400":
+          description: 'error: Bad request or validation error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized or user not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Post not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a comment
+      tags:
+      - Comments
+  /posts/posts/{postID}/comments:
+    get:
+      description: Retrieves all comments for a specific post
+      parameters:
+      - description: Post ID
+        in: path
+        name: postID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of comments for the post
+          schema:
+            items: {}
+            type: array
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get comments by post ID
+      tags:
+      - Posts
+  /sub/sub/{subID}/invite:
+    post:
+      consumes:
+      - application/json
+      description: Allows sub owners and moderators to invite users to private subs
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      - description: User to invite
+        in: body
+        name: invite
+        required: true
+        schema:
+          $ref: '#/definitions/models.InviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Invitation sent'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found or permission denied'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Invite user to private sub
+      tags:
+      - Subs
+  /sub/sub/{subID}/join:
+    post:
+      description: Allows users to join a subreddit (public or invited private subs)
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'membership.SubID: ID of joined sub'
+          schema: {}
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Join a sub
+      tags:
+      - Subs
+  /sub/sub/{subID}/leave:
+    post:
+      description: Allows users to leave a subreddit they are currently a member of
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Left [sub name]'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found or not a member'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Leave a sub
+      tags:
+      - Subs
+  /sub/sub/{subID}/postCount:
+    get:
+      description: Returns the total number of posts in a specified sub
+      parameters:
+      - description: Sub ID
+        in: query
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post count in the sub
+          schema:
+            type: integer
+        "401":
+          description: 'error: Unauthorized access to private sub'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get post count for sub
+      tags:
+      - Subs
+  /sub/sub/{subID}/posts:
+    get:
+      description: Fetches all posts for a specific subreddit
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of posts in the sub
+          schema:
+            items: {}
+            type: array
+        "401":
+          description: 'error: Unauthorized access to private sub'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get posts by sub ID
+      tags:
+      - Subs
+  /subs/:
+    get:
+      description: Returns all public subs and private subs the user is authorized
+        to access
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of available subs
+          schema:
+            items: {}
+            type: array
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all subs
+      tags:
+      - Subs
+    post:
+      consumes:
+      - application/json
+      description: Creates a new subreddit (community)
+      parameters:
+      - description: Sub creation data
+        in: body
+        name: sub
+        required: true
+        schema:
+          $ref: '#/definitions/models.SubRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created sub with ID and details
+          schema: {}
+        "400":
+          description: 'error: Bad request or sub name already taken'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new sub
+      tags:
+      - Subs
+  /user/invite/{inviteID}/accept:
+    post:
+      description: Allows users to accept invitations to join private subs
+      parameters:
+      - description: Invite ID
+        in: path
+        name: inviteID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: You have joined the sub'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Invitation not found or expired'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Accept sub invitation
+      tags:
+      - Subs
+  /vote/downvote:
+    post:
+      consumes:
+      - application/json
+      description: Allows authenticated users to downvote a post (changes their vote
+        to -1)
+      parameters:
+      - description: Vote data with postID
+        in: body
+        name: vote
+        required: true
+        schema:
+          additionalProperties:
+            type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Vote updated/removed/recored'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request or invalid data'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Post not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Database error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Downvote a post
+      tags:
+      - Votes
+  /vote/upvote:
+    post:
+      consumes:
+      - application/json
+      description: Allows authenticated users to upvote a post (changes their vote
+        to +1)
+      parameters:
+      - description: Vote data with postID
+        in: body
+        name: vote
+        required: true
+        schema:
+          additionalProperties:
+            type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Vote updated/removed/recored'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request or invalid data'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Post not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Database error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upvote a post
+      tags:
+      - Votes
+securityDefinitions:
+  BearerAuth:
+    description: '"JWT Authorization header using the Bearer scheme. Example: \"Authorization:
+      Bearer {token}\""'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

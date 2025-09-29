@@ -8,7 +8,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RequestPasswordReset generates a reset token for the user
+// @Summary Request Password Reset
+// @Description Generates a password reset token for the specified username
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Username for password reset"
+// @Success 200 {object} map[string]interface{} "message: Reset token generated. Use it to reset your password., token: Reset token"
+// @Failure 400 {object} map[string]string "error: Bad request or username required"
+// @Failure 404 {object} map[string]string "error: User not found"
+// @Router /auth/password-reset/request [post]
 func RequestPasswordReset(c *gin.Context) {
 	var request struct {
 		Username string `json:"username"`
@@ -38,7 +47,16 @@ func RequestPasswordReset(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Reset token generated. Use it to reset your password.", "token": passwordResetToken.Token})
 }
 
-// ResetPassword allows users to reset their password using a valid token
+// @Summary Reset Password
+// @Description Resets a user's password using a valid reset token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Reset token and new password"
+// @Success 200 {object} map[string]string "message: Password has been reset successfully"
+// @Failure 400 {object} map[string]string "error: Bad request, invalid token, or weak password"
+// @Failure 404 {object} map[string]string "error: Token not found or expired"
+// @Router /auth/password-reset/reset [post]
 func ResetPassword(c *gin.Context) {
 	var request struct {
 		Token       string `json:"token"`

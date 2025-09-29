@@ -11,12 +11,15 @@ import (
 )
 
 // @Summary Register a new user
-// @Description Creates a new user account
+// @Description Creates a new user account with username and password
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]string "Success"
-// @Failure 400 {object} map[string]string "Bad request"
+// @Param request body models.User true "User registration details"
+// @Success 200 {object} map[string]string "message: User registered successfully"
+// @Failure 400 {object} map[string]string "error: Bad request - username and password required"
+// @Failure 409 {object} map[string]string "error: Username already taken"
+// @Failure 500 {object} map[string]string "error: Internal server error"
 // @Router /auth/register [post]
 func Register(c *gin.Context) {
 	var user models.User
