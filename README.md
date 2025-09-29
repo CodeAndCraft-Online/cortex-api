@@ -1,10 +1,11 @@
 # Cortex API
 
 ![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)
+![Docker](https://img.shields.io/badge/docker-ghcr.io/CodeAndCraft--Online/cortex--api-blue?logo=docker)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Release](https://img.shields.io/github/v/release/CodeAndCraft-Online/cortex-api?color=blue)
-[![Test Coverage](https://codecov.io/gh/CodeAndCraft-Online/cortex-api/branch/main/graph/badge.svg)](https://codecov.io/gh/CodeAndCraft-Online/cortex-api)
 [![CI](https://github.com/CodeAndCraft-Online/cortex-api/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/CodeAndCraft-Online/cortex-api/actions/workflows/test-coverage.yml)
+[![Test Coverage](https://codecov.io/gh/CodeAndCraft-Online/cortex-api/branch/main/graph/badge.svg)](https://codecov.io/gh/CodeAndCraft-Online/cortex-api)
 
 A Reddit-like social media platform backend API built with Go and PostgreSQL, providing a comprehensive platform for community-driven discussions with posts, comments, voting systems, and private/public community features.
 
@@ -166,7 +167,13 @@ The API follows Clean Architecture principles with clear separation of concerns:
 ### Docker Deployment
 
 ```bash
-# Build and run with Docker Compose
+# Pull from GitHub Container Registry
+docker pull ghcr.io/codeandcraft-online/cortex-api:latest
+
+# Run the container
+docker run -p 8080:8080 --env-file .env ghcr.io/codeandcraft-online/cortex-api:latest
+
+# Or build locally
 docker build -t cortex-api .
 docker run -p 8080:8080 --env-file .env cortex-api
 ```
