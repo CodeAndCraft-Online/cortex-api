@@ -30,6 +30,16 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	if user.Username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username is required"})
+		return
+	}
+
+	if user.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password is required"})
+		return
+	}
+
 	db.DB.Where("username = ?", user.Username).First(&foundUser)
 	if foundUser.ID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})

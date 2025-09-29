@@ -117,6 +117,11 @@ func InviteUser(subID, username string, inviteRequest models.InviteRequest) erro
 		return fmt.Errorf("sub not found")
 	}
 
+	// ✅ Ensure invitations are only for private subs
+	if !sub.Private {
+		return fmt.Errorf("can only invite users to private subs")
+	}
+
 	// ✅ Ensure the inviter is the sub owner
 	if sub.OwnerID != inviter.ID {
 		return fmt.Errorf("only the owner can invite users")
@@ -124,7 +129,7 @@ func InviteUser(subID, username string, inviteRequest models.InviteRequest) erro
 
 	// Fetch invitee user
 	var invitee models.User
-	if err := db.DB.Where("username = ?", username).First(&invitee).Error; err != nil {
+	if err := db.DB.Where("username = ?", inviteRequest.InviteeUsername).First(&invitee).Error; err != nil {
 		return fmt.Errorf("invitee user not found")
 	}
 
@@ -246,6 +251,13 @@ func LeaveSub(subID, username string) (*models.Sub, error) {
 	var sub models.Sub
 	if err := db.DB.First(&sub, subID).Error; err != nil {
 		return nil, fmt.Errorf("sub not found")
+	}
+
+	// Check if the user is actually a member
+	var count int64
+	db.DB.Model(&models.SubMembership{}).Where("sub_id = ? AND user_id = ?", sub.ID, user.ID).Count(&count)
+	if count == 0 {
+		return nil, fmt.Errorf("you are not a member of this sub")
 	}
 
 	// Remove the membership

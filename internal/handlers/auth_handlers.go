@@ -19,6 +19,11 @@ func RequestPasswordReset(c *gin.Context) {
 		return
 	}
 
+	if request.Username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username is required"})
+		return
+	}
+
 	passwordResetToken, err := services.ResetPasswordRequest(request.Username)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{

@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	db "github.com/CodeAndCraft-Online/cortex-api/internal/database"
-	models "github.com/CodeAndCraft-Online/cortex-api/internal/models"
+	"github.com/CodeAndCraft-Online/cortex-api/internal/models"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -24,9 +25,33 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if user.Username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username is required"})
+		return
+	}
+
+	if user.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password is required"})
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
 	user.Password = string(hashedPassword)
 
-	db.DB.Create(&user)
+	if err := db.DB.Create(&user).Error; err != nil {
+		// Check if it's a duplicate username error
+		if err.Error() == "UNIQUE constraint failed: users.username" ||
+			err.Error() == "duplicate key value violates unique constraint \"uni_users_username\"" ||
+			strings.Contains(err.Error(), "duplicate") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "username already taken"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
 }

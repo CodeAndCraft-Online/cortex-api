@@ -54,6 +54,12 @@ func CreatePost(username string, post models.Post) (*models.Post, error) {
 	}
 	post.UserID = user.ID
 
+	// Validate that the sub exists
+	var sub models.Sub
+	if err := db.DB.Where("id = ?", post.SubID).First(&sub).Error; err != nil {
+		return nil, fmt.Errorf("sub not found")
+	}
+
 	// Save post to the database
 	if err := db.DB.Create(&post).Error; err != nil {
 		return nil, fmt.Errorf("failed to create post")

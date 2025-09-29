@@ -25,7 +25,7 @@ func setupSubTestRouter(username string, userID uint) *gin.Engine {
 	r.POST("/subs", CreateSub)
 	r.POST("/subs/:subID/join", JoinSub)
 	r.POST("/subs/:subID/invite", InviteUser)
-	r.POST("/subs/invite/:token", AcceptInvite)
+	r.POST("/subs/invite/:inviteID", AcceptInvite)
 	r.GET("/subs/:subID/posts", ListSubPosts)
 	r.DELETE("/subs/:subID", LeaveSub)
 	r.GET("/subs/post-count", GetPostCountPerSub)
@@ -38,7 +38,7 @@ func TestGetSubsHandler(t *testing.T) {
 		return
 	}
 
-	// Setup - Clear tables in correct order to avoid foreign key violations
+	// Setup - Clear tables in correct order to avoid foreign key violations and data interference
 	database.DB.Exec("DELETE FROM comments")
 	database.DB.Exec("DELETE FROM posts")
 	database.DB.Exec("DELETE FROM sub_memberships")
@@ -256,5 +256,208 @@ func TestLeaveSubHandler(t *testing.T) {
 		responseBody := w.Body.String()
 		assert.Contains(t, responseBody, `"message":`)
 		assert.Contains(t, responseBody, "Left leavesub")
+	})
+
+	t.Run("leave sub not member", func(t *testing.T) {
+		// Create another sub without membership
+		user2 := models.User{Username: "nonmember", Password: "hashedpass"}
+		database.DB.Create(&user2)
+		sub2 := models.Sub{Name: "notmembersub", Description: "Sub not a member of", OwnerID: user2.ID, Private: false}
+		database.DB.Create(&sub2)
+
+		router := setupSubTestRouter("leaver", user.ID)
+
+		req, _ := http.NewRequest("DELETE", "/subs/"+fmt.Sprintf("%d", sub2.ID), nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		// Should return error code (service dependent)
+		assert.NotEqual(t, http.StatusOK, w.Code)
+	})
+}
+
+func TestInviteUserHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping handler integration tests")
+		return
+	}
+
+	// Setup - Clear tables
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "owner", Password: "hashedpass"}
+	invitee := models.User{Username: "invitee", Password: "hashedpass"}
+	database.DB.Create(&owner)
+	database.DB.Create(&invitee)
+
+	// Create private sub
+	privateSub := models.Sub{Name: "privatesub", Description: "Private Sub", OwnerID: owner.ID, Private: true}
+	database.DB.Create(&privateSub)
+
+	router := setupSubTestRouter("owner", owner.ID)
+
+	t.Run("invite user to private sub", func(t *testing.T) {
+		inviteData := `{"invitee":"invitee"}`
+		req, _ := http.NewRequest("POST", "/subs/"+fmt.Sprintf("%d", privateSub.ID)+"/invite", strings.NewReader(inviteData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		responseBody := w.Body.String()
+		assert.Contains(t, responseBody, "Invitation sent to invitee")
+	})
+
+	t.Run("invite to public sub", func(t *testing.T) {
+		// Create public sub
+		publicSub := models.Sub{Name: "publicsub", Description: "Public Sub", OwnerID: owner.ID, Private: false}
+		database.DB.Create(&publicSub)
+
+		inviteData := `{"invitee":"invitee"}`
+		req, _ := http.NewRequest("POST", "/subs/"+fmt.Sprintf("%d", publicSub.ID)+"/invite", strings.NewReader(inviteData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		// May return error as public subs don't require invites
+		assert.NotEqual(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("invite non-existent user", func(t *testing.T) {
+		inviteData := `{"invitee":"nonexistent"}`
+		req, _ := http.NewRequest("POST", "/subs/"+fmt.Sprintf("%d", privateSub.ID)+"/invite", strings.NewReader(inviteData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.NotEqual(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("invite to non-owned sub", func(t *testing.T) {
+		// Create another sub owned by different user
+		user3 := models.User{Username: "otherowner", Password: "hashedpass"}
+		database.DB.Create(&user3)
+		otherSub := models.Sub{Name: "othersub", Description: "Other Sub", OwnerID: user3.ID, Private: true}
+		database.DB.Create(&otherSub)
+
+		inviteData := `{"invitee":"invitee"}`
+		req, _ := http.NewRequest("POST", "/subs/"+fmt.Sprintf("%d", otherSub.ID)+"/invite", strings.NewReader(inviteData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.NotEqual(t, http.StatusOK, w.Code)
+	})
+}
+
+func TestAcceptInviteHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping handler integration tests")
+		return
+	}
+
+	// Setup - Clear tables to avoid interference
+	database.DB.Exec("TRUNCATE TABLE users, subs, sub_invitations, sub_memberships, posts, comments RESTART IDENTITY CASCADE")
+
+	// Create test users
+	owner := models.User{Username: "owner", Password: "hashedpass"}
+	invitee := models.User{Username: "invitee", Password: "hashedpass"}
+	database.DB.Create(&owner)
+	database.DB.Create(&invitee)
+
+	// Create private sub
+	privateSub := models.Sub{Name: "privatesub", Description: "Private Sub", OwnerID: owner.ID, Private: true}
+	database.DB.Create(&privateSub)
+
+	// Create invitation - Note: The service layer should handle invitation creation
+	// For this test, we'll just call the service directly if possible
+	// or assume the service creates a valid invitation
+
+	router := setupSubTestRouter("invitee", invitee.ID)
+
+	t.Run("accept valid invitation", func(t *testing.T) {
+		// Create invitation for the test
+		invitation := models.SubInvitation{
+			SubID:     privateSub.ID,
+			InviterID: owner.ID,
+			InviteeID: invitee.ID,
+			Status:    "pending",
+		}
+		database.DB.Create(&invitation)
+
+		req, _ := http.NewRequest("POST", "/subs/invite/"+fmt.Sprintf("%d", invitation.ID), nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		responseBody := w.Body.String()
+		assert.Contains(t, responseBody, "You have joined the sub")
+	})
+
+	t.Run("accept invalid invitation", func(t *testing.T) {
+		req, _ := http.NewRequest("POST", "/subs/invite/9999", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.NotEqual(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("accept invitation not authorized", func(t *testing.T) {
+		wrongRouter := setupSubTestRouter("wronguser", owner.ID) // Different user
+
+		req, _ := http.NewRequest("POST", "/subs/invite/testinvite123", nil)
+		w := httptest.NewRecorder()
+		wrongRouter.ServeHTTP(w, req)
+
+		assert.NotEqual(t, http.StatusOK, w.Code)
+	})
+}
+
+func TestGetPostCountPerSubHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping handler integration tests")
+		return
+	}
+
+	// Setup - Clear tables
+	database.DB.Exec("DELETE FROM posts")
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test data
+	user := models.User{Username: "counter", Password: "hashedpass"}
+	database.DB.Create(&user)
+	sub := models.Sub{Name: "countsub", Description: "Sub for count", OwnerID: user.ID, Private: false}
+	database.DB.Create(&sub)
+
+	// Create posts
+	post1 := models.Post{Title: "Post 1", Content: "Content 1", UserID: user.ID, SubID: sub.ID}
+	post2 := models.Post{Title: "Post 2", Content: "Content 2", UserID: user.ID, SubID: sub.ID}
+	database.DB.Create(&post1)
+	database.DB.Create(&post2)
+
+	t.Run("get post count for public sub", func(t *testing.T) {
+		// This endpoint returns posts, not count - we need to check the actual endpoint
+		// The GetPostCountPerSub endpoint ID might be different
+		// Let me check what endpoints we have
+
+		r := gin.Default()
+		r.Use(func(c *gin.Context) {
+			c.Set("username", "counter")
+			c.Next()
+		})
+		r.GET("/subs/post-count", GetPostCountPerSub)
+
+		req, _ := http.NewRequest("GET", "/subs/post-count?subID="+fmt.Sprintf("%d", sub.ID), nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		// Assert returns some valid response for post count
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }

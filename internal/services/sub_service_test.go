@@ -118,7 +118,7 @@ func TestInviteUser_Service(t *testing.T) {
 	invitee := models.User{Username: "invitee", Password: "password"}
 	database.DB.Create(&invitee)
 
-	sub := models.Sub{Name: "invitesub", OwnerID: owner.ID}
+	sub := models.Sub{Name: "invitesub", OwnerID: owner.ID, Private: true}
 	database.DB.Create(&sub)
 
 	inviteRequest := models.InviteRequest{

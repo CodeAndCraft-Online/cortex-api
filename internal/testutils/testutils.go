@@ -86,14 +86,14 @@ func SetupTestDB() (*gorm.DB, func(), error) {
 		return nil, nil, err
 	}
 
-	hostAndPort := resource.GetHostPort("5432/tcp")
-	databaseUrl := fmt.Sprintf("postgres://cortex_user:cortex_pass@%s/cortex_db?sslmode=disable", hostAndPort)
+	port := resource.GetPort("5432/tcp")
+	databaseUrl := fmt.Sprintf("postgres://cortex_user:cortex_pass@127.0.0.1:%s/cortex_db?sslmode=disable", port)
 
 	log.Println("Connecting to database on url: ", databaseUrl)
 
 	var db *gorm.DB
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	pool.MaxWait = 120 * time.Second
+	pool.MaxWait = 180 * time.Second
 	if err = pool.Retry(func() error {
 		db, err = gorm.Open(postgres.Open(databaseUrl), &gorm.Config{})
 		if err != nil {

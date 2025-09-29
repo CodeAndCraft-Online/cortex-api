@@ -83,8 +83,10 @@ func InviteUser(c *gin.Context) {
 		return
 	}
 
-	var inviteRequest struct {
-		InviteeUsername string `json:"invitee"`
+	var inviteRequest models.InviteRequest
+	if err := c.ShouldBindJSON(&inviteRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	err := services.InviteUser(c.Param("subID"), username.(string), inviteRequest)
@@ -155,7 +157,7 @@ func GetPostCountPerSub(c *gin.Context) {
 		user = username.(string)
 	}
 
-	postCount, err := services.GetPostCountPerSub(c.Param("subID"), user)
+	postCount, err := services.GetPostCountPerSub(c.Query("subID"), user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
