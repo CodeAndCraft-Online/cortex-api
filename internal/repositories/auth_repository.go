@@ -1,0 +1,86 @@
+package repositories
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"time"
+
+	db "github.com/CodeAndCraft-Online/cortex-api/internal/database"
+	models "github.com/CodeAndCraft-Online/cortex-api/internal/models"
+	"golang.org/x/crypto/bcrypt"
+)
+
+func ResetPasswordRequest(username string) (*models.PasswordResetToken, error) {
+
+	// Find user by username
+	var user models.User
+	if err := db.DB.Where("username = ?", username).First(&user).Error; err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	// Generate a reset token
+	token, err := GenerateToken()
+	if err != nil {
+		return nil, fmt.Errorf("could not generate reset token")
+	}
+
+	// Save token in the database
+	resetToken := models.PasswordResetToken{
+		UserID:    user.ID,
+		Token:     token,
+		ExpiresAt: time.Now().Add(15 * time.Minute), // Expires in 15 minutes
+	}
+	db.DB.Create(&resetToken)
+
+	return &resetToken, nil
+}
+
+// GenerateToken creates a random token
+func GenerateToken() (string, error) {
+	bytes := make([]byte, 32)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func ResetPassword(token, newPassword string) error {
+	// Find the token
+	var resetToken models.PasswordResetToken
+	if err := db.DB.Where("token = ?", token).First(&resetToken).Error; err != nil {
+		return fmt.Errorf("invalid or expired token")
+	}
+
+	// Check expiration
+	if time.Now().After(resetToken.ExpiresAt) {
+		return fmt.Errorf("reset token has expired")
+	}
+
+	// Find the user
+	var user models.User
+	if err := db.DB.First(&user, resetToken.UserID).Error; err != nil {
+		return fmt.Errorf("user not found")
+	}
+
+	// Hash new password
+	hashedPassword, err := HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password")
+	}
+
+	// Update password
+	user.Password = hashedPassword
+	db.DB.Save(&user)
+
+	// Delete used reset token
+	db.DB.Delete(&resetToken)
+	return nil
+}
+
+// HashPassword hashes a password using bcrypt
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}

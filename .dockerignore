@@ -1,0 +1,7 @@
+/go
+/build
+/tmp
+*.log
+.env
+.vscode
+deployment
