@@ -821,6 +821,305 @@
                 }
             }
         },
+        "/sub/{subID}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a subreddit completely (only sub owner can delete, cascade deletes memberships, posts, comments)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subs"
+                ],
+                "summary": "Delete a sub",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sub ID",
+                        "name": "subID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "message: Sub deleted successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Only sub owner can delete",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Sub not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates a subreddit's details (only sub owner can update description and privacy)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subs"
+                ],
+                "summary": "Update a sub",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sub ID",
+                        "name": "subID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated sub data (only description and private fields)",
+                        "name": "sub",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SubRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated sub details",
+                        "schema": {
+                            "$ref": "#/definitions/models.SubResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "error: Bad request or invalid data",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Only sub owner can update",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Sub not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sub/{subID}/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves all members of a subreddit (public subs: anyone, private subs: members/owners only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subs"
+                ],
+                "summary": "Get sub members",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sub ID",
+                        "name": "subID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of sub members with usernames and join dates",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SubMemberResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized access to private sub",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Sub not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sub/{subID}/pending-invites": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves all pending invitations for a subreddit (only sub owners can view)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subs"
+                ],
+                "summary": "Get pending invites",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sub ID",
+                        "name": "subID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of pending invites with usernames and creation dates",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.InviteResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "error: Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "error: Only sub owner can view invites",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "error: Sub not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "error: Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/subs/": {
             "get": {
                 "security": [
@@ -1169,6 +1468,17 @@
                 }
             }
         },
+        "models.InviteResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "invitee_username": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Post": {
             "type": "object",
             "properties": {
@@ -1205,6 +1515,17 @@
                 }
             }
         },
+        "models.SubMemberResponse": {
+            "type": "object",
+            "properties": {
+                "joined_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SubRequest": {
             "type": "object",
             "properties": {
@@ -1212,6 +1533,29 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "private": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "models.SubResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner": {
                     "type": "string"
                 },
                 "private": {

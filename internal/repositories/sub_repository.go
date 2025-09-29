@@ -303,3 +303,119 @@ func GetPostCountPerSub(subID, username string) (int, error) {
 
 	return postCount, nil
 }
+
+func UpdateSub(subID, ownerID uint, updateRequest models.SubRequest) (*models.Sub, error) {
+	// Check if the sub exists and verify ownership
+	var sub models.Sub
+	if err := db.DB.Preload("Owner").First(&sub, subID).Error; err != nil {
+		return nil, fmt.Errorf("sub not found")
+	}
+
+	// Verify the user is the owner
+	if sub.OwnerID != ownerID {
+		return nil, fmt.Errorf("only the sub owner can update the sub")
+	}
+
+	// Update allowed fields (only description and private flag)
+	sub.Description = updateRequest.Description
+	sub.Private = updateRequest.Private
+
+	// Save the updated sub
+	if err := db.DB.Save(&sub).Error; err != nil {
+		return nil, fmt.Errorf("failed to update sub")
+	}
+
+	return &sub, nil
+}
+
+func DeleteSub(subID, ownerID uint) error {
+	// Check if the sub exists and verify ownership
+	var sub models.Sub
+	if err := db.DB.First(&sub, subID).Error; err != nil {
+		return fmt.Errorf("sub not found")
+	}
+
+	// Verify the user is the owner
+	if sub.OwnerID != ownerID {
+		return fmt.Errorf("only the sub owner can delete the sub")
+	}
+
+	// Delete the sub (cascade delete will handle related records)
+	if err := db.DB.Delete(&sub).Error; err != nil {
+		return fmt.Errorf("failed to delete sub")
+	}
+
+	return nil
+}
+
+func GetSubMembers(subID string, userID uint, isOwner bool) ([]models.SubMemberResponse, error) {
+	// Check if the sub exists
+	var sub models.Sub
+	if err := db.DB.First(&sub, subID).Error; err != nil {
+		return nil, fmt.Errorf("sub not found")
+	}
+
+	// Access control: private subs can only be viewed by members/owners
+	if sub.Private {
+		isMember := false
+		if isOwner && sub.OwnerID == userID {
+			isMember = true
+		} else {
+			var count int64
+			db.DB.Model(&models.SubMembership{}).Where("sub_id = ? AND user_id = ?", sub.ID, userID).Count(&count)
+			if count > 0 {
+				isMember = true
+			}
+		}
+		if !isMember {
+			return nil, fmt.Errorf("you must be a member to view this sub's members")
+		}
+	}
+
+	// Get all members of the sub
+	var memberships []models.SubMembership
+	if err := db.DB.Preload("User").Where("sub_id = ?", subID).Order("joined_at ASC").Find(&memberships).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch sub members")
+	}
+
+	// Convert to response format
+	var memberResponses []models.SubMemberResponse
+	for _, membership := range memberships {
+		memberResponses = append(memberResponses, models.SubMemberResponse{
+			Username: membership.User.Username,
+			JoinedAt: membership.JoinedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	return memberResponses, nil
+}
+
+func GetPendingInvites(subID string, ownerID uint) ([]models.InviteResponse, error) {
+	// Check if the sub exists and verify ownership
+	var sub models.Sub
+	if err := db.DB.First(&sub, subID).Error; err != nil {
+		return nil, fmt.Errorf("sub not found")
+	}
+
+	// Only sub owners can view pending invites
+	if sub.OwnerID != ownerID {
+		return nil, fmt.Errorf("only the sub owner can view pending invites")
+	}
+
+	// Get all pending invites for this sub
+	var invites []models.SubInvitation
+	if err := db.DB.Preload("Invitee").Where("sub_id = ? AND status = ?", subID, "pending").Order("created_at ASC").Find(&invites).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch pending invites")
+	}
+
+	// Convert to response format
+	var inviteResponses []models.InviteResponse
+	for _, invite := range invites {
+		inviteResponses = append(inviteResponses, models.InviteResponse{
+			InviteeUsername: invite.Invitee.Username,
+			CreatedAt:       invite.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	return inviteResponses, nil
+}

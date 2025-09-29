@@ -242,3 +242,156 @@ func GetPostCountPerSub(c *gin.Context) {
 
 	c.JSON(http.StatusOK, postCount)
 }
+
+// @Summary Update a sub
+// @Description Updates a subreddit's details (only sub owner can update description and privacy)
+// @Tags Subs
+// @Accept json
+// @Produce json
+// @Param subID path string true "Sub ID"
+// @Param sub body models.SubRequest true "Updated sub data (only description and private fields)"
+// @Success 200 {object} models.SubResponse "Updated sub details"
+// @Failure 400 {object} map[string]string "error: Bad request or invalid data"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Only sub owner can update"
+// @Failure 404 {object} map[string]string "error: Sub not found"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /sub/{subID} [patch]
+func UpdateSub(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var updateRequest models.SubRequest
+	if err := c.ShouldBindJSON(&updateRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	sub, err := services.UpdateSub(c.Param("subID"), username.(string), updateRequest)
+	if err != nil {
+		// Check specific error types for appropriate status codes
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "only the sub owner can update the sub" || err.Error() == "invalid sub ID" {
+			statusCode = http.StatusForbidden
+		} else if err.Error() == "sub not found" {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.SubResponse{
+		ID:          sub.ID,
+		Name:        sub.Name,
+		Description: sub.Description,
+		Owner:       username.(string), // Simplified for now
+		Private:     sub.Private,
+		CreatedAt:   sub.CreatedAt.Format("2006-01-02 15:04:05"),
+	})
+}
+
+// @Summary Delete a sub
+// @Description Deletes a subreddit completely (only sub owner can delete, cascade deletes memberships, posts, comments)
+// @Tags Subs
+// @Produce json
+// @Param subID path string true "Sub ID"
+// @Success 200 {object} map[string]string "message: Sub deleted successfully"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Only sub owner can delete"
+// @Failure 404 {object} map[string]string "error: Sub not found"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /sub/{subID} [delete]
+func DeleteSub(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	err := services.DeleteSub(c.Param("subID"), username.(string))
+	if err != nil {
+		// Check specific error types for appropriate status codes
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "only the sub owner can delete the sub" || err.Error() == "invalid sub ID" {
+			statusCode = http.StatusForbidden
+		} else if err.Error() == "sub not found" {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Sub deleted successfully"})
+}
+
+// @Summary Get sub members
+// @Description Retrieves all members of a subreddit (public subs: anyone, private subs: members/owners only)
+// @Tags Subs
+// @Produce json
+// @Param subID path string true "Sub ID"
+// @Success 200 {array} models.SubMemberResponse "Array of sub members with usernames and join dates"
+// @Failure 401 {object} map[string]string "error: Unauthorized access to private sub"
+// @Failure 404 {object} map[string]string "error: Sub not found"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /sub/{subID}/members [get]
+func GetSubMembers(c *gin.Context) {
+	username := ""
+	userValue, exists := c.Get("username")
+	if exists {
+		username = userValue.(string)
+	}
+
+	members, err := services.GetSubMembers(c.Param("subID"), username)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "you must be a member to view this sub's members" {
+			statusCode = http.StatusForbidden
+		} else if err.Error() == "sub not found" {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, members)
+}
+
+// @Summary Get pending invites
+// @Description Retrieves all pending invitations for a subreddit (only sub owners can view)
+// @Tags Subs
+// @Produce json
+// @Param subID path string true "Sub ID"
+// @Success 200 {array} models.InviteResponse "Array of pending invites with usernames and creation dates"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 403 {object} map[string]string "error: Only sub owner can view invites"
+// @Failure 404 {object} map[string]string "error: Sub not found"
+// @Failure 500 {object} map[string]string "error: Internal server error"
+// @Security BearerAuth
+// @Router /sub/{subID}/pending-invites [get]
+func GetPendingInvites(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	invites, err := services.GetPendingInvites(c.Param("subID"), username.(string))
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "only the sub owner can view pending invites" {
+			statusCode = http.StatusForbidden
+		} else if err.Error() == "sub not found" {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, invites)
+}

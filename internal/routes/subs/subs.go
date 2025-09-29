@@ -15,6 +15,14 @@ func RegisterSubRoutes(router *gin.RouterGroup) {
 		subRoutes.POST("/sub/:subID/leave", handlers.LeaveSub)
 		subRoutes.GET("/sub/:subID/posts", handlers.ListSubPosts)
 		subRoutes.POST("/sub/:subID/invite", handlers.InviteUser)
+
+		// New CRUD operations (Phase 1)
+		subRoutes.PATCH("/:subID", handlers.UpdateSub)
+		subRoutes.DELETE("/:subID", handlers.DeleteSub)
+
+		// New management queries (Phase 2)
+		subRoutes.GET("/:subID/members", handlers.GetSubMembers)
+		subRoutes.GET("/:subID/pending-invites", handlers.GetPendingInvites)
 	}
 }
 

@@ -21,6 +21,7 @@ type SubInvitation struct {
 	InviteeID uint   `gorm:"not null"`
 	Status    string `gorm:"default:'pending'"` // pending, accepted, rejected
 	CreatedAt time.Time
+	Invitee   User `gorm:"foreignKey:InviteeID"` // For preloading invitee data
 }
 
 // SubMembership tracks users who join subs
@@ -29,6 +30,7 @@ type SubMembership struct {
 	SubID    uint `gorm:"not null"`
 	UserID   uint `gorm:"not null"`
 	JoinedAt time.Time
+	User     User `gorm:"foreignKey:UserID"` // For preloading user data
 }
 
 // SubResponse struct for formatted output
@@ -49,4 +51,16 @@ type SubRequest struct {
 
 type InviteRequest struct {
 	InviteeUsername string `json:"invitee"`
+}
+
+// SubMemberResponse represents a sub member in API responses
+type SubMemberResponse struct {
+	Username string `json:"username"`
+	JoinedAt string `json:"joined_at"`
+}
+
+// InviteResponse represents a pending invitation in API responses
+type InviteResponse struct {
+	InviteeUsername string `json:"invitee_username"`
+	CreatedAt       string `json:"created_at"`
 }

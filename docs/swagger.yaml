@@ -15,6 +15,13 @@ definitions:
       invitee:
         type: string
     type: object
+  models.InviteResponse:
+    properties:
+      created_at:
+        type: string
+      invitee_username:
+        type: string
+    type: object
   models.Post:
     properties:
       content:
@@ -39,11 +46,33 @@ definitions:
       userID:
         type: integer
     type: object
+  models.SubMemberResponse:
+    properties:
+      joined_at:
+        type: string
+      username:
+        type: string
+    type: object
   models.SubRequest:
     properties:
       description:
         type: string
       name:
+        type: string
+      private:
+        type: boolean
+    type: object
+  models.SubResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      owner:
         type: string
       private:
         type: boolean
@@ -409,6 +438,203 @@ paths:
       summary: Get comments by post ID
       tags:
       - Posts
+  /sub/{subID}:
+    delete:
+      description: Deletes a subreddit completely (only sub owner can delete, cascade
+        deletes memberships, posts, comments)
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Sub deleted successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Only sub owner can delete'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a sub
+      tags:
+      - Subs
+    patch:
+      consumes:
+      - application/json
+      description: Updates a subreddit's details (only sub owner can update description
+        and privacy)
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      - description: Updated sub data (only description and private fields)
+        in: body
+        name: sub
+        required: true
+        schema:
+          $ref: '#/definitions/models.SubRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated sub details
+          schema:
+            $ref: '#/definitions/models.SubResponse'
+        "400":
+          description: 'error: Bad request or invalid data'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Only sub owner can update'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a sub
+      tags:
+      - Subs
+  /sub/{subID}/members:
+    get:
+      description: 'Retrieves all members of a subreddit (public subs: anyone, private
+        subs: members/owners only)'
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of sub members with usernames and join dates
+          schema:
+            items:
+              $ref: '#/definitions/models.SubMemberResponse'
+            type: array
+        "401":
+          description: 'error: Unauthorized access to private sub'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get sub members
+      tags:
+      - Subs
+  /sub/{subID}/pending-invites:
+    get:
+      description: Retrieves all pending invitations for a subreddit (only sub owners
+        can view)
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of pending invites with usernames and creation dates
+          schema:
+            items:
+              $ref: '#/definitions/models.InviteResponse'
+            type: array
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: 'error: Only sub owner can view invites'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get pending invites
+      tags:
+      - Subs
   /sub/sub/{subID}/invite:
     post:
       consumes:

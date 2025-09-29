@@ -293,3 +293,275 @@ func TestLeaveSub(t *testing.T) {
 		assert.Contains(t, err.Error(), "sub not found")
 	})
 }
+
+func TestUpdateSub(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "subowner", Password: "password"}
+	nonOwner := models.User{Username: "notowner", Password: "password"}
+	database.DB.Create(&owner)
+	database.DB.Create(&nonOwner)
+
+	// Create test sub
+	sub := models.Sub{Name: "updateablesub", Description: "Original description", OwnerID: owner.ID, Private: false}
+	database.DB.Create(&sub)
+
+	t.Run("update sub successfully", func(t *testing.T) {
+		updateRequest := models.SubRequest{
+			Description: "Updated description",
+			Private:     true,
+		}
+
+		updatedSub, err := UpdateSub(sub.ID, owner.ID, updateRequest)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, updatedSub)
+		assert.Equal(t, "Updated description", updatedSub.Description)
+		assert.True(t, updatedSub.Private)
+		assert.Equal(t, sub.Name, updatedSub.Name)    // Name should not change
+		assert.Equal(t, owner.ID, updatedSub.OwnerID) // Owner should not change
+	})
+
+	t.Run("non-owner cannot update sub", func(t *testing.T) {
+		updateRequest := models.SubRequest{
+			Description: "Unauthorized update",
+			Private:     false,
+		}
+
+		updatedSub, err := UpdateSub(sub.ID, nonOwner.ID, updateRequest)
+
+		assert.Error(t, err)
+		assert.Nil(t, updatedSub)
+		assert.Contains(t, err.Error(), "only the sub owner can update")
+	})
+
+	t.Run("update non-existent sub", func(t *testing.T) {
+		updateRequest := models.SubRequest{
+			Description: "Update non-existent",
+			Private:     false,
+		}
+
+		updatedSub, err := UpdateSub(999, owner.ID, updateRequest)
+
+		assert.Error(t, err)
+		assert.Nil(t, updatedSub)
+		assert.Contains(t, err.Error(), "sub not found")
+	})
+}
+
+func TestDeleteSub(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "deleteowner", Password: "password"}
+	nonOwner := models.User{Username: "deletenonowner", Password: "password"}
+	database.DB.Create(&owner)
+	database.DB.Create(&nonOwner)
+
+	// Create test sub
+	sub := models.Sub{Name: "deletablesub", Description: "To be deleted", OwnerID: owner.ID, Private: false}
+	database.DB.Create(&sub)
+
+	t.Run("delete sub successfully", func(t *testing.T) {
+		err := DeleteSub(sub.ID, owner.ID)
+
+		assert.NoError(t, err)
+
+		// Verify sub is deleted
+		var deletedSub models.Sub
+		err = database.DB.First(&deletedSub, sub.ID).Error
+		assert.Error(t, err) // Should return an error since sub is deleted
+	})
+
+	t.Run("non-owner cannot delete sub", func(t *testing.T) {
+		// Create another sub for testing
+		sub2 := models.Sub{Name: "nondeletablesub", Description: "Cannot be deleted", OwnerID: owner.ID, Private: false}
+		database.DB.Create(&sub2)
+
+		err := DeleteSub(sub2.ID, nonOwner.ID)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "only the sub owner can delete")
+
+		// Verify sub still exists
+		var stillExists models.Sub
+		err = database.DB.First(&stillExists, sub2.ID).Error
+		assert.NoError(t, err)
+	})
+
+	t.Run("delete non-existent sub", func(t *testing.T) {
+		err := DeleteSub(999, owner.ID)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "sub not found")
+	})
+}
+
+func TestGetSubMembers(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "memowner", Password: "password"}
+	member1 := models.User{Username: "memmember1", Password: "password"}
+	member2 := models.User{Username: "memmember2", Password: "password"}
+	nonMember := models.User{Username: "memnonmember", Password: "password"}
+	database.DB.Create(&owner)
+	database.DB.Create(&member1)
+	database.DB.Create(&member2)
+	database.DB.Create(&nonMember)
+
+	// Create test subs
+	publicSub := models.Sub{Name: "publicwithmembers", OwnerID: owner.ID, Private: false}
+	privateSub := models.Sub{Name: "privatewithmembers", OwnerID: owner.ID, Private: true}
+	database.DB.Create(&publicSub)
+	database.DB.Create(&privateSub)
+
+	// Create memberships
+	membership1 := models.SubMembership{SubID: publicSub.ID, UserID: member1.ID}
+	membership2 := models.SubMembership{SubID: publicSub.ID, UserID: member2.ID}
+	membership3 := models.SubMembership{SubID: privateSub.ID, UserID: member1.ID}
+	database.DB.Create(&membership1)
+	database.DB.Create(&membership2)
+	database.DB.Create(&membership3)
+
+	t.Run("get members of public sub", func(t *testing.T) {
+		members, err := GetSubMembers(fmt.Sprintf("%d", publicSub.ID), nonMember.ID, false)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, members)
+		assert.Len(t, members, 2)
+
+		memberUsernames := make(map[string]bool)
+		for _, member := range members {
+			memberUsernames[member.Username] = true
+		}
+		assert.True(t, memberUsernames["memmember1"])
+		assert.True(t, memberUsernames["memmember2"])
+	})
+
+	t.Run("get members of private sub as non-member", func(t *testing.T) {
+		members, err := GetSubMembers(fmt.Sprintf("%d", privateSub.ID), nonMember.ID, false)
+
+		assert.Error(t, err)
+		assert.Nil(t, members)
+		assert.Contains(t, err.Error(), "you must be a member to view")
+	})
+
+	t.Run("get members of private sub as owner", func(t *testing.T) {
+		members, err := GetSubMembers(fmt.Sprintf("%d", privateSub.ID), owner.ID, true)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, members)
+		assert.Len(t, members, 1)
+		assert.Equal(t, "memmember1", members[0].Username)
+	})
+
+	t.Run("get members of private sub as member", func(t *testing.T) {
+		members, err := GetSubMembers(fmt.Sprintf("%d", privateSub.ID), member1.ID, false)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, members)
+		assert.Len(t, members, 1)
+		assert.Equal(t, "memmember1", members[0].Username)
+	})
+
+	t.Run("get members of non-existent sub", func(t *testing.T) {
+		members, err := GetSubMembers("999", owner.ID, true)
+
+		assert.Error(t, err)
+		assert.Nil(t, members)
+		assert.Contains(t, err.Error(), "sub not found")
+	})
+}
+
+func TestGetPendingInvites(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping repository integration tests")
+		return
+	}
+
+	// Clear tables to avoid conflicts
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "inviteowner", Password: "password"}
+	nonOwner := models.User{Username: "invitenonowner", Password: "password"}
+	invitee1 := models.User{Username: "invitee1", Password: "password"}
+	invitee2 := models.User{Username: "invitee2", Password: "password"}
+	database.DB.Create(&owner)
+	database.DB.Create(&nonOwner)
+	database.DB.Create(&invitee1)
+	database.DB.Create(&invitee2)
+
+	// Create private sub
+	sub := models.Sub{Name: "inviteprivatesub", OwnerID: owner.ID, Private: true}
+	database.DB.Create(&sub)
+
+	// Create pending invites
+	invite1 := models.SubInvitation{SubID: sub.ID, InviterID: owner.ID, InviteeID: invitee1.ID, Status: "pending"}
+	invite2 := models.SubInvitation{SubID: sub.ID, InviterID: owner.ID, InviteeID: invitee2.ID, Status: "pending"}
+	database.DB.Create(&invite1)
+	database.DB.Create(&invite2)
+
+	t.Run("get pending invites as owner", func(t *testing.T) {
+		invites, err := GetPendingInvites(fmt.Sprintf("%d", sub.ID), owner.ID)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, invites)
+		assert.Len(t, invites, 2)
+
+		inviteeUsernames := make(map[string]bool)
+		for _, invite := range invites {
+			inviteeUsernames[invite.InviteeUsername] = true
+		}
+		assert.True(t, inviteeUsernames["invitee1"])
+		assert.True(t, inviteeUsernames["invitee2"])
+	})
+
+	t.Run("non-owner cannot view pending invites", func(t *testing.T) {
+		invites, err := GetPendingInvites(fmt.Sprintf("%d", sub.ID), nonOwner.ID)
+
+		assert.Error(t, err)
+		assert.Nil(t, invites)
+		assert.Contains(t, err.Error(), "only the sub owner can view")
+	})
+
+	t.Run("get pending invites for non-existent sub", func(t *testing.T) {
+		invites, err := GetPendingInvites("999", owner.ID)
+
+		assert.Error(t, err)
+		assert.Nil(t, invites)
+		assert.Contains(t, err.Error(), "sub not found")
+	})
+}
