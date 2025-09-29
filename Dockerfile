@@ -10,8 +10,9 @@ RUN go mod download
 # Copy application source code
 COPY . .
 
-# ✅ Build the binary (Disable CGO and force Linux binary)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o cortex-api .
+# ✅ Build the binary (Disable CGO and use target platform)
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -o cortex-api .
 
 # Stage 2: Create the final lightweight image
 FROM alpine:latest
