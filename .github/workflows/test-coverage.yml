@@ -22,11 +22,9 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 5432:5432
 
     env:
-      POSTGRES_HOST: localhost
+      POSTGRES_HOST: postgres
       POSTGRES_USER: cortex_user
       POSTGRES_PASSWORD: cortex_pass
       POSTGRES_DB: cortex_db
