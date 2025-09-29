@@ -10,6 +10,11 @@ definitions:
       postID:
         type: integer
     type: object
+  models.InviteRequest:
+    properties:
+      invitee:
+        type: string
+    type: object
   models.Post:
     properties:
       content:
@@ -404,6 +409,195 @@ paths:
       summary: Get comments by post ID
       tags:
       - Posts
+  /sub/sub/{subID}/invite:
+    post:
+      consumes:
+      - application/json
+      description: Allows sub owners and moderators to invite users to private subs
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      - description: User to invite
+        in: body
+        name: invite
+        required: true
+        schema:
+          $ref: '#/definitions/models.InviteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Invitation sent'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found or permission denied'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Invite user to private sub
+      tags:
+      - Subs
+  /sub/sub/{subID}/join:
+    post:
+      description: Allows users to join a subreddit (public or invited private subs)
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'membership.SubID: ID of joined sub'
+          schema: {}
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Join a sub
+      tags:
+      - Subs
+  /sub/sub/{subID}/leave:
+    post:
+      description: Allows users to leave a subreddit they are currently a member of
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Left [sub name]'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found or not a member'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Leave a sub
+      tags:
+      - Subs
+  /sub/sub/{subID}/postCount:
+    get:
+      description: Returns the total number of posts in a specified sub
+      parameters:
+      - description: Sub ID
+        in: query
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post count in the sub
+          schema:
+            type: integer
+        "401":
+          description: 'error: Unauthorized access to private sub'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Sub not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get post count for sub
+      tags:
+      - Subs
+  /sub/sub/{subID}/posts:
+    get:
+      description: Fetches all posts for a specific subreddit
+      parameters:
+      - description: Sub ID
+        in: path
+        name: subID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of posts in the sub
+          schema:
+            items: {}
+            type: array
+        "401":
+          description: 'error: Unauthorized access to private sub'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get posts by sub ID
+      tags:
+      - Subs
   /subs/:
     get:
       description: Returns all public subs and private subs the user is authorized
@@ -467,6 +661,153 @@ paths:
       summary: Create a new sub
       tags:
       - Subs
+  /user/invite/{inviteID}/accept:
+    post:
+      description: Allows users to accept invitations to join private subs
+      parameters:
+      - description: Invite ID
+        in: path
+        name: inviteID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: You have joined the sub'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Invitation not found or expired'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Accept sub invitation
+      tags:
+      - Subs
+  /vote/downvote:
+    post:
+      consumes:
+      - application/json
+      description: Allows authenticated users to downvote a post (changes their vote
+        to -1)
+      parameters:
+      - description: Vote data with postID
+        in: body
+        name: vote
+        required: true
+        schema:
+          additionalProperties:
+            type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Vote updated/removed/recored'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request or invalid data'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Post not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Database error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Downvote a post
+      tags:
+      - Votes
+  /vote/upvote:
+    post:
+      consumes:
+      - application/json
+      description: Allows authenticated users to upvote a post (changes their vote
+        to +1)
+      parameters:
+      - description: Vote data with postID
+        in: body
+        name: vote
+        required: true
+        schema:
+          additionalProperties:
+            type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: Vote updated/removed/recored'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: 'error: Bad request or invalid data'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: Unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: 'error: Post not found'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: Database error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upvote a post
+      tags:
+      - Votes
 securityDefinitions:
   BearerAuth:
     description: '"JWT Authorization header using the Bearer scheme. Example: \"Authorization:

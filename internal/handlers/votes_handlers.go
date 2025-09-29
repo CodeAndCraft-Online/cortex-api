@@ -8,11 +8,36 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DownvotePost allows a user to downvote a post
+// @Summary Downvote a post
+// @Description Allows authenticated users to downvote a post (changes their vote to -1)
+// @Tags Votes
+// @Accept json
+// @Produce json
+// @Param vote body map[string]uint true "Vote data with postID"
+// @Success 200 {object} map[string]string "message: Vote updated/removed/recored"
+// @Failure 400 {object} map[string]string "error: Bad request or invalid data"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 404 {object} map[string]string "error: Post not found"
+// @Failure 500 {object} map[string]string "error: Database error"
+// @Security BearerAuth
+// @Router /vote/downvote [post]
 func DownvotePost(c *gin.Context) {
 	handleVote(c, -1) // -1 = Downvote
 }
 
+// @Summary Upvote a post
+// @Description Allows authenticated users to upvote a post (changes their vote to +1)
+// @Tags Votes
+// @Accept json
+// @Produce json
+// @Param vote body map[string]uint true "Vote data with postID"
+// @Success 200 {object} map[string]string "message: Vote updated/removed/recored"
+// @Failure 400 {object} map[string]string "error: Bad request or invalid data"
+// @Failure 401 {object} map[string]string "error: Unauthorized"
+// @Failure 404 {object} map[string]string "error: Post not found"
+// @Failure 500 {object} map[string]string "error: Database error"
+// @Security BearerAuth
+// @Router /vote/upvote [post]
 func UpvotePost(c *gin.Context) {
 	handleVote(c, 1) // 1 = Upvote
 }
