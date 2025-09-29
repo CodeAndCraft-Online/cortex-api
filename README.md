@@ -1,5 +1,10 @@
 # Cortex API
 
+![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+[![Test Coverage](https://codecov.io/gh/CodeAndCraft-Online/cortex-api/branch/main/graph/badge.svg)](https://codecov.io/gh/CodeAndCraft-Online/cortex-api)
+[![CI](https://github.com/CodeAndCraft-Online/cortex-api/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/CodeAndCraft-Online/cortex-api/actions/workflows/test-coverage.yml)
+
 A Reddit-like social media platform backend API built with Go and PostgreSQL, providing a comprehensive platform for community-driven discussions with posts, comments, voting systems, and private/public community features.
 
 ## 🚀 Features
