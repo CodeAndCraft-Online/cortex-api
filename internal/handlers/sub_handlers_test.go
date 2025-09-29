@@ -29,6 +29,10 @@ func setupSubTestRouter(username string, userID uint) *gin.Engine {
 	r.GET("/subs/:subID/posts", ListSubPosts)
 	r.DELETE("/subs/:subID", LeaveSub)
 	r.GET("/subs/post-count", GetPostCountPerSub)
+	r.PATCH("/:subID", UpdateSub)
+	r.DELETE("/:subID", DeleteSub)
+	r.GET("/:subID/members", GetSubMembers)
+	r.GET("/:subID/pending-invites", GetPendingInvites)
 	return r
 }
 
@@ -459,5 +463,266 @@ func TestGetPostCountPerSubHandler(t *testing.T) {
 
 		// Assert returns some valid response for post count
 		assert.Equal(t, http.StatusOK, w.Code)
+	})
+}
+
+func TestUpdateSubHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping handler integration tests")
+		return
+	}
+
+	// Setup - Clear tables
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "subowner", Password: "hashedpass"}
+	nonOwner := models.User{Username: "notowner", Password: "hashedpass"}
+	database.DB.Create(&owner)
+	database.DB.Create(&nonOwner)
+
+	// Create test sub
+	sub := models.Sub{Name: "updatablesub", Description: "Original description", OwnerID: owner.ID, Private: false}
+	database.DB.Create(&sub)
+
+	router := setupSubTestRouter("subowner", owner.ID)
+
+	t.Run("update sub successfully", func(t *testing.T) {
+		updateData := `{"description":"Updated description","private":true}`
+		req, _ := http.NewRequest("PATCH", "/"+fmt.Sprintf("%d", sub.ID), strings.NewReader(updateData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		responseBody := w.Body.String()
+		assert.Contains(t, responseBody, "Updated description")
+		assert.Contains(t, responseBody, `"private":true`)
+		assert.Contains(t, responseBody, `"name":"updatablesub"`) // Name should be unchanged
+	})
+
+	t.Run("non-owner cannot update sub", func(t *testing.T) {
+		nonOwnerRouter := setupSubTestRouter("notowner", nonOwner.ID)
+		updateData := `{"description":"Unauthorized update"}`
+		req, _ := http.NewRequest("PATCH", "/"+fmt.Sprintf("%d", sub.ID), strings.NewReader(updateData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		nonOwnerRouter.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+	})
+
+	t.Run("update non-existent sub", func(t *testing.T) {
+		updateData := `{"description":"Update non-existent"}`
+		req, _ := http.NewRequest("PATCH", "/999", strings.NewReader(updateData))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}
+
+func TestDeleteSubHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping handler integration tests")
+		return
+	}
+
+	// Setup - Clear tables
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "deleteowner", Password: "hashedpass"}
+	nonOwner := models.User{Username: "deletenonowner", Password: "hashedpass"}
+	database.DB.Create(&owner)
+	database.DB.Create(&nonOwner)
+
+	// Create test sub
+	sub := models.Sub{Name: "deletablesub", Description: "To be deleted", OwnerID: owner.ID, Private: false}
+	database.DB.Create(&sub)
+
+	router := setupSubTestRouter("deleteowner", owner.ID)
+
+	t.Run("delete sub successfully", func(t *testing.T) {
+		req, _ := http.NewRequest("DELETE", "/"+fmt.Sprintf("%d", sub.ID), nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "Sub deleted successfully")
+
+		// Verify sub is deleted
+		var deletedSub models.Sub
+		err := database.DB.First(&deletedSub, sub.ID).Error
+		assert.NotNil(t, err) // Should return an error since sub is deleted
+	})
+
+	t.Run("non-owner cannot delete sub", func(t *testing.T) {
+		// Create another sub
+		sub2 := models.Sub{Name: "nondeletablesub", Description: "Cannot be deleted", OwnerID: owner.ID, Private: false}
+		database.DB.Create(&sub2)
+
+		nonOwnerRouter := setupSubTestRouter("deletenonowner", nonOwner.ID)
+		req, _ := http.NewRequest("DELETE", "/"+fmt.Sprintf("%d", sub2.ID), nil)
+		w := httptest.NewRecorder()
+		nonOwnerRouter.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Contains(t, w.Body.String(), "only the sub owner can delete")
+	})
+
+	t.Run("delete non-existent sub", func(t *testing.T) {
+		req, _ := http.NewRequest("DELETE", "/999", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}
+
+func TestGetSubMembersHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping handler integration tests")
+		return
+	}
+
+	// Setup - Clear tables
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "memowner", Password: "hashedpass"}
+	member1 := models.User{Username: "memmember1", Password: "hashedpass"}
+	member2 := models.User{Username: "memmember2", Password: "hashedpass"}
+	nonMember := models.User{Username: "memnonmember", Password: "hashedpass"}
+	database.DB.Create(&owner)
+	database.DB.Create(&member1)
+	database.DB.Create(&member2)
+	database.DB.Create(&nonMember)
+
+	// Create test subs
+	publicSub := models.Sub{Name: "publicwithmembers", OwnerID: owner.ID, Private: false}
+	privateSub := models.Sub{Name: "privatewithmembers", OwnerID: owner.ID, Private: true}
+	database.DB.Create(&publicSub)
+	database.DB.Create(&privateSub)
+
+	// Create memberships
+	membership1 := models.SubMembership{SubID: publicSub.ID, UserID: member1.ID}
+	membership2 := models.SubMembership{SubID: publicSub.ID, UserID: member2.ID}
+	membership3 := models.SubMembership{SubID: privateSub.ID, UserID: member1.ID}
+	database.DB.Create(&membership1)
+	database.DB.Create(&membership2)
+	database.DB.Create(&membership3)
+
+	t.Run("get members of public sub", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/"+fmt.Sprintf("%d", publicSub.ID)+"/members", nil)
+		w := httptest.NewRecorder()
+		router := setupSubTestRouter("", 0) // No auth for public access
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "memmember1")
+		assert.Contains(t, w.Body.String(), "memmember2")
+	})
+
+	t.Run("get members of private sub as non-member", func(t *testing.T) {
+		router := setupSubTestRouter("memnonmember", nonMember.ID)
+		req, _ := http.NewRequest("GET", "/"+fmt.Sprintf("%d", privateSub.ID)+"/members", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Contains(t, w.Body.String(), "you must be a member")
+	})
+
+	t.Run("get members of private sub as member", func(t *testing.T) {
+		router := setupSubTestRouter("memmember1", member1.ID)
+		req, _ := http.NewRequest("GET", "/"+fmt.Sprintf("%d", privateSub.ID)+"/members", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "memmember1")
+	})
+
+	t.Run("get members of non-existent sub", func(t *testing.T) {
+		router := setupSubTestRouter("memowner", owner.ID)
+		req, _ := http.NewRequest("GET", "/999/members", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+}
+
+func TestGetPendingInvitesHandler(t *testing.T) {
+	if database.DB == nil {
+		t.Skip("Database not available, skipping handler integration tests")
+		return
+	}
+
+	// Setup - Clear tables
+	database.DB.Exec("DELETE FROM sub_memberships")
+	database.DB.Exec("DELETE FROM sub_invitations")
+	database.DB.Exec("DELETE FROM subs")
+	database.DB.Exec("DELETE FROM users")
+
+	// Create test users
+	owner := models.User{Username: "inviteowner", Password: "hashedpass"}
+	nonOwner := models.User{Username: "invitenonowner", Password: "hashedpass"}
+	invitee1 := models.User{Username: "invitee1", Password: "hashedpass"}
+	invitee2 := models.User{Username: "invitee2", Password: "hashedpass"}
+	database.DB.Create(&owner)
+	database.DB.Create(&nonOwner)
+	database.DB.Create(&invitee1)
+	database.DB.Create(&invitee2)
+
+	// Create private sub
+	sub := models.Sub{Name: "inviteprivatesub", OwnerID: owner.ID, Private: true}
+	database.DB.Create(&sub)
+
+	// Create pending invites
+	invite1 := models.SubInvitation{SubID: sub.ID, InviterID: owner.ID, InviteeID: invitee1.ID, Status: "pending"}
+	invite2 := models.SubInvitation{SubID: sub.ID, InviterID: owner.ID, InviteeID: invitee2.ID, Status: "pending"}
+	database.DB.Create(&invite1)
+	database.DB.Create(&invite2)
+
+	t.Run("get pending invites as owner", func(t *testing.T) {
+		router := setupSubTestRouter("inviteowner", owner.ID)
+		req, _ := http.NewRequest("GET", "/"+fmt.Sprintf("%d", sub.ID)+"/pending-invites", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Contains(t, w.Body.String(), "invitee1")
+		assert.Contains(t, w.Body.String(), "invitee2")
+	})
+
+	t.Run("non-owner cannot view pending invites", func(t *testing.T) {
+		router := setupSubTestRouter("invitenonowner", nonOwner.ID)
+		req, _ := http.NewRequest("GET", "/"+fmt.Sprintf("%d", sub.ID)+"/pending-invites", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusForbidden, w.Code)
+		assert.Contains(t, w.Body.String(), "only the sub owner can view")
+	})
+
+	t.Run("get pending invites for non-existent sub", func(t *testing.T) {
+		router := setupSubTestRouter("inviteowner", owner.ID)
+		req, _ := http.NewRequest("GET", "/999/pending-invites", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 }

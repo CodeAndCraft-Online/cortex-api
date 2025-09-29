@@ -12,7 +12,8 @@ A Reddit-like social media platform backend API built with Go and PostgreSQL, pr
 
 ### Core Functionality
 - **User Authentication** - JWT-based authentication with refresh token rotation
-- **Community Management** - Public and private communities (subs) with invitation system
+- **Community Management** - Complete CRUD operations for public and private communities (subs) with invitation system
+- **Community Administration** - Owner-controlled sub updates, deletions, member management, and invitation oversight
 - **Content Creation** - Posts with image support and threaded comments
 - **Voting System** - Upvote/downvote functionality for posts and comments
 - **Password Reset** - Secure token-based password recovery system
@@ -190,12 +191,14 @@ docker run -p 8080:8080 --env-file .env cortex-api
 - `PUT /users/:id` - Update user profile
 
 ### Communities (Subs)
-- `GET /subs` - List public communities
-- `GET /subs/:id` - Get community details
+- `GET /subs` - List available communities (public + authorized private)
+- `GET /subs/:id/members` - List community members (access-controlled)
+- `GET /subs/:id/pending-invites` - View pending invitations (owner-only)
 - `POST /subs` - Create new community
-- `PUT /subs/:id` - Update community
-- `POST /subs/:id/join` - Join community
-- `POST /subs/:id/invite` - Invite user to private community
+- `PATCH /subs/:id` - Update community settings (owner-only)
+- `DELETE /subs/:id` - Delete community (owner-only)
+- `POST /subs/:id/join` - Join community (public or with invitation)
+- `POST /subs/:id/invite` - Invite user to private community (owner-only)
 
 ### Posts
 - `GET /posts` - List posts (with pagination)
@@ -221,7 +224,9 @@ docker run -p 8080:8080 --env-file .env cortex-api
 - Complete PostgreSQL database schema
 - JWT authentication system
 - User registration and login
-- Basic community (sub) management
+- Full community (sub) management with complete CRUD operations
+- Private/public community support with invitation system
+- Community administration features (member management, invitation oversight)
 - Post creation and retrieval
 - Comment system foundation
 - Voting system foundation
@@ -229,7 +234,6 @@ docker run -p 8080:8080 --env-file .env cortex-api
 ### 🔄 In Progress
 - Complete comment CRUD operations
 - Full voting system implementation
-- Private community invitation system
 - Password reset flow completion
 
 ### 📋 Planned Features

@@ -135,7 +135,7 @@ func GetSubMembers(subID, username string) ([]models.SubMemberResponse, error) {
 
 		// Check if user is the owner (only needed for private subs, but calculate once)
 		var sub models.Sub
-		if err := db.DB.Where("name = ?", subID).First(&sub).Error; err != nil {
+		if err := db.DB.First(&sub, subID).Error; err != nil {
 			return nil, fmt.Errorf("sub not found")
 		}
 		isOwner = sub.OwnerID == user.ID
