@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/CodeAndCraft-Online/cortex-api/internal/models"
 	"github.com/CodeAndCraft-Online/cortex-api/internal/services"
 	"github.com/gin-gonic/gin"
 )
@@ -32,14 +33,19 @@ func CreateSub(c *gin.Context) {
 		return
 	}
 
-	var subRequest struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Private     bool   `json:"private"`
+	var subRequest models.SubRequest
+	if err := c.ShouldBindJSON(&subRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	newSub, err := services.CreateSub(username.(string), subRequest)
 	if err != nil {
+		// Check for specific error types
+		if err.Error() == "sub name already taken" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -60,13 +66,13 @@ func JoinSub(c *gin.Context) {
 		return
 	}
 
-	sub, err := services.JoinSub(username.(string), c.Param("subID"))
+	membership, err := services.JoinSub(username.(string), c.Param("subID"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"joined": sub.ID})
+	c.JSON(http.StatusOK, gin.H{"joined": membership.SubID})
 }
 
 // InviteUser allows sub owners to invite users to a private sub

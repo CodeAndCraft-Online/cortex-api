@@ -95,6 +95,11 @@ func TestResetPasswordIntegration(t *testing.T) {
 }
 
 func TestResetPasswordRequest_UserNotFound(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	token, err := ResetPasswordRequest("nonexistentuser")
 
 	assert.Error(t, err)
@@ -103,6 +108,11 @@ func TestResetPasswordRequest_UserNotFound(t *testing.T) {
 }
 
 func TestResetPassword_InvalidToken(t *testing.T) {
+	if !dbAvailable {
+		t.Skip("Database not available, skipping integration test")
+		return
+	}
+
 	err := ResetPassword("invalidtoken", "newpassword")
 
 	assert.Error(t, err)

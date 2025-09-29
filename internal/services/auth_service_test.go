@@ -29,8 +29,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		println("Docker not available, skipping service integration tests:", err.Error())
 		available = false
-		teardown() // Safe to call even if nil
-		return     // Skip all tests
+		database.DB = nil // Ensure no stale database connection
+		return            // Skip all tests
 	}
 
 	database.DB = db
