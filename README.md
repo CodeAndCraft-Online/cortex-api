@@ -243,6 +243,54 @@ docker run -p 8080:8080 --env-file .env cortex-api
 - Use proper Go naming conventions
 - Document complex business logic
 
+## 🧪 Testing
+
+### Test Coverage
+The project includes comprehensive unit and integration tests with the following coverage areas:
+
+- **Repository Layer**: Database operations and data access
+- **Service Layer**: Business logic and validation
+- **Handler Layer**: HTTP request/response handling
+- **Integration Tests**: Full API endpoint testing
+
+### Dependencies
+- [testify](https://github.com/stretchr/testify) - Assertions and test utilities
+- [dockertest](https://github.com/ory/dockertest/v3) - Integration test database setup
+- [sqlmock](https://github.com/DATA-DOG/go-sqlmock) - SQL mocking for unit tests
+
+### Running Tests
+
+#### Local Development (requires PostgreSQL)
+```bash
+# Using the test script
+./scripts/run-tests.sh
+
+# Or manually
+go test -v ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
+```
+
+#### With Docker (for integration tests)
+```bash
+# Build and run tests in container
+docker build -t cortex-api-test .
+docker run --rm cortex-api-test go test ./...
+```
+
+### CI/CD Coverage
+- GitHub Actions workflow runs on every push/PR
+- PostgreSQL service for integration testing
+- Codecov integration for coverage tracking
+- Coverage reports are generated and stored as artifacts
+
+### Test Structure
+```
+tests/
+├── unit/               # Unit tests (mocked dependencies)
+├── integration/        # Integration tests (real DB)
+└── coverage/           # Test coverage reports
+```
+
 ## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
