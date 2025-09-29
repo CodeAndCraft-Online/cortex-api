@@ -2,6 +2,7 @@
 
 ![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Release](https://img.shields.io/github/v/release/CodeAndCraft-Online/cortex-api?color=blue)
 [![Test Coverage](https://codecov.io/gh/CodeAndCraft-Online/cortex-api/branch/main/graph/badge.svg)](https://codecov.io/gh/CodeAndCraft-Online/cortex-api)
 [![CI](https://github.com/CodeAndCraft-Online/cortex-api/actions/workflows/test-coverage.yml/badge.svg)](https://github.com/CodeAndCraft-Online/cortex-api/actions/workflows/test-coverage.yml)
 
