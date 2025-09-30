@@ -103,9 +103,18 @@ CREATE TABLE password_reset_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- MIGRATION: Add new fields to users table for user profiles
+ALTER TABLE users ADD COLUMN email VARCHAR(255) UNIQUE;
+ALTER TABLE users ADD COLUMN display_name VARCHAR(255) DEFAULT '';
+ALTER TABLE users ADD COLUMN bio TEXT;
+ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500);
+ALTER TABLE users ADD COLUMN is_private BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
 -- Create indexes for better performance
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_refresh_token ON users(refresh_token);
+CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_subs_name ON subs(name);
 CREATE INDEX idx_subs_owner_id ON subs(owner_id);
 CREATE INDEX idx_posts_sub_id ON posts(sub_id);

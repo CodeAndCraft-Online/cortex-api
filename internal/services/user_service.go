@@ -3,7 +3,9 @@ package services
 
 import (
 	"errors"
+	"regexp"
 
+	db "github.com/CodeAndCraft-Online/cortex-api/internal/database"
 	"github.com/CodeAndCraft-Online/cortex-api/internal/models"
 	"github.com/CodeAndCraft-Online/cortex-api/internal/repositories"
 	"golang.org/x/crypto/bcrypt"
@@ -66,7 +68,7 @@ func (s *UserService) GetUserProfileInternal(userID uint) (*models.UserProfileRe
 // UpdateUserProfile updates the authenticated user's profile
 func (s *UserService) UpdateUserProfile(userID uint, updates models.UserUpdateRequest) (*models.UserProfileResponse, error) {
 	// Validate updates
-	if err := s.validateUserUpdates(updates); err != nil {
+	if err := s.validateUserUpdates(userID, updates); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +110,7 @@ func (s *UserService) ChangePassword(userID uint, currentPassword, newPassword s
 }
 
 // validateUserUpdates performs basic validation on profile updates
-func (s *UserService) validateUserUpdates(updates models.UserUpdateRequest) error {
+func (s *UserService) validateUserUpdates(userID uint, updates models.UserUpdateRequest) error {
 	if updates.DisplayName != nil && len(*updates.DisplayName) > 100 {
 		return errors.New("display name must be 100 characters or less")
 	}
@@ -118,11 +120,22 @@ func (s *UserService) validateUserUpdates(updates models.UserUpdateRequest) erro
 	}
 
 	if updates.Email != nil {
-		// Basic email validation - could be enhanced with regex
-		if len(*updates.Email) == 0 {
+		email := *updates.Email
+		if len(email) == 0 {
 			return errors.New("email cannot be empty if provided")
 		}
-		// Check if email is already taken by another user would go here
+
+		// Basic email format validation using regex
+		emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+		if !emailRegex.MatchString(email) {
+			return errors.New("invalid email format")
+		}
+
+		// Check if email is already taken by another user
+		var existingUser models.User
+		if err := db.DB.Where("email = ? AND id != ?", email, userID).First(&existingUser).Error; err == nil {
+			return errors.New("email already taken")
+		}
 	}
 
 	return nil
