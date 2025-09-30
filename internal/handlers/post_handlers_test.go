@@ -45,11 +45,14 @@ func TestGetPostByIDHandler(t *testing.T) {
 
 	router := setupPostTestRouter()
 
-	// Create test data
-	user := models.User{Username: "testuser", Password: "password"}
+	// Create test data with unique names to avoid conflicts
+	testUsername := "getposthandleruser"
+	testSubName := "getposthandlersub"
+
+	user := models.User{Username: testUsername, Password: "password"}
 	database.DB.Create(&user)
 
-	sub := models.Sub{Name: "postsub", OwnerID: user.ID}
+	sub := models.Sub{Name: testSubName, OwnerID: user.ID}
 	database.DB.Create(&sub)
 
 	post := models.Post{
@@ -60,8 +63,8 @@ func TestGetPostByIDHandler(t *testing.T) {
 	}
 	database.DB.Create(&post)
 
-	// Test GET request
-	req, _ := http.NewRequest("GET", "/posts/1", nil)
+	// Test GET request using the actual post ID
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/posts/%d", post.ID), nil)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -70,8 +73,8 @@ func TestGetPostByIDHandler(t *testing.T) {
 
 	var response map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &response)
-	assert.Equal(t, "Test Post for Handler", response["title"])
-	assert.Equal(t, "testuser", response["username"])
+	assert.Equal(t, "Test Post for Handler", response["Title"])
+	assert.Equal(t, testUsername, response["Username"])
 }
 
 func TestGetPostByIDHandler_PostNotFound(t *testing.T) {
