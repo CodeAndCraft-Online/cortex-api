@@ -134,7 +134,7 @@ func TestUpdateComment_Handler(t *testing.T) {
 
 		var updatedComment models.Comment
 		json.Unmarshal(w.Body.Bytes(), &updatedComment)
-		assert.Contains(t, string(w.Body.Bytes()), "Updated comment content")
+		assert.Contains(t, w.Body.String(), "Updated comment content")
 	})
 
 	t.Run("update comment with invalid data", func(t *testing.T) {
