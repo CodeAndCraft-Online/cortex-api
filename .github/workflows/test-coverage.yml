@@ -80,8 +80,8 @@ jobs:
       run: |
         if [ -z "${POSTGRES_READY}" ] || [ "${POSTGRES_READY}" = "false" ]; then
           echo "🚧 PostgreSQL unavailable - running unit tests only (no integration tests)"
-          # Run unit tests that don't require DB (pkg, internal/database, docs, main)
-          go test -v ./pkg ./internal/database ./docs ./main_test.go -coverprofile=coverage.out
+          # Run unit tests that don't require DB - exclude integration test directories
+          go test -v $(go list ./... | grep -v "internal/handlers\|internal/services\|internal/repositories") -coverprofile=coverage.out
           # Skip integration tests that require PostgreSQL
           echo "Integration tests (handlers, services, repositories) skipped due to PostgreSQL unavailability"
         else
