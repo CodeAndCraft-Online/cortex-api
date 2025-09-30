@@ -54,6 +54,17 @@ jobs:
     - name: Install dependencies
       run: go mod download
 
+    - name: Install PostgreSQL client
+      run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+    - name: Wait for PostgreSQL
+      run: |
+        until psql -h postgres -U cortex_user -d cortex_db -c "SELECT 1;" 2>/dev/null; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        echo "PostgreSQL is ready!"
+
     - name: Run tests with coverage
       run: go test -v ./... -coverprofile=coverage.out
 
