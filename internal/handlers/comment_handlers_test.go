@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -51,7 +52,7 @@ func TestGetCommentByID_Handler(t *testing.T) {
 	router.GET("/comments/:id", GetCommentByID)
 
 	t.Run("get comment successfully", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/comments/1", nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/comments/%d", comment.ID), nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
@@ -125,7 +126,7 @@ func TestUpdateComment_Handler(t *testing.T) {
 		}
 		jsonData, _ := json.Marshal(updateData)
 
-		req, _ := http.NewRequest("PUT", "/comments/1", bytes.NewBuffer(jsonData))
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/comments/%d", comment.ID), bytes.NewBuffer(jsonData))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
@@ -198,7 +199,7 @@ func TestDeleteComment_Handler(t *testing.T) {
 	router.DELETE("/comments/:id", DeleteComment)
 
 	t.Run("delete comment successfully", func(t *testing.T) {
-		req, _ := http.NewRequest("DELETE", "/comments/1", nil)
+		req, _ := http.NewRequest("DELETE", fmt.Sprintf("/comments/%d", comment.ID), nil)
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 
