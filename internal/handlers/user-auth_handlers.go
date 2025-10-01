@@ -10,40 +10,50 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// UserRegisterRequest represents the registration request data
+type UserRegisterRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // @Summary Register a new user
 // @Description Creates a new user account with username and password
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param request body models.User true "User registration details"
+// @Param request body UserRegisterRequest true "User registration details"
 // @Success 200 {object} map[string]string "message: User registered successfully"
 // @Failure 400 {object} map[string]string "error: Bad request - username and password required"
 // @Failure 409 {object} map[string]string "error: Username already taken"
 // @Failure 500 {object} map[string]string "error: Internal server error"
 // @Router /auth/register [post]
 func Register(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var req UserRegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if user.Username == "" {
+	if req.Username == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username is required"})
 		return
 	}
 
-	if user.Password == "" {
+	if req.Password == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "password is required"})
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
 		return
 	}
-	user.Password = string(hashedPassword)
+
+	user := models.User{
+		Username: req.Username,
+		Password: string(hashedPassword),
+	}
 
 	if err := db.DB.Create(&user).Error; err != nil {
 		// Check if it's a duplicate username error

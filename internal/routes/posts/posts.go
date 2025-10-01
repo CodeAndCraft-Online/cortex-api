@@ -2,12 +2,14 @@ package posts
 
 import (
 	"github.com/CodeAndCraft-Online/cortex-api/internal/handlers"
+	middleware "github.com/CodeAndCraft-Online/cortex-api/pkg"
 	"github.com/gin-gonic/gin"
 )
 
 // RegisterPostRoutes sets up routes for posts
 func RegisterPostRoutes(router *gin.RouterGroup) {
 	posts := router.Group("/posts")
+	posts.Use(middleware.AuthMiddleware())
 	{
 		posts.GET("/:id", handlers.GetPostByID)
 		posts.POST("/", handlers.CreatePost)
