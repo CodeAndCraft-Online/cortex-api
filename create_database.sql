@@ -1,11 +1,8 @@
 -- Database creation script for Cortex API (Reddit-like application)
 -- This script creates all necessary tables based on the GORM models
 
--- Create database if it doesn't exist (uncomment if needed)
--- CREATE DATABASE cortex_db;
-
--- Connect to the database
--- \c cortex_db;
+-- Note: Database is created via POSTGRES_DB environment variable in docker-compose.yml
+-- No need to create/connect manually in Docker init context
 
 -- Create users table
 CREATE TABLE users (
