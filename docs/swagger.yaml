@@ -92,7 +92,7 @@ definitions:
       username:
         type: string
     type: object
-host: localhost:4321
+host: codeandcraft.online:4321
 info:
   contact:
     email: support@cortex-api.com
