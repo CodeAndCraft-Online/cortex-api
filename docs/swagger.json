@@ -14,7 +14,7 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:8080",
+    "host": "codeandcraft.online:4321",
     "basePath": "/api",
     "paths": {
         "/auth/login": {
