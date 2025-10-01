@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	db "github.com/CodeAndCraft-Online/cortex-api/internal/database"
@@ -11,45 +12,51 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtSecret = []byte("your-secret-key")
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+
+// UserLoginRequest represents the login request data
+type UserLoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
 // @Summary User Login
 // @Description Authenticates a user with username and password, returns a JWT token
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param request body map[string]string true "Login credentials - username and password"
+// @Param request body UserLoginRequest true "Login credentials - username and password"
 // @Success 200 {object} map[string]string "token: JWT access token"
 // @Failure 400 {object} map[string]string "error: Bad request - username and password required"
 // @Failure 401 {object} map[string]string "error: Invalid credentials"
 // @Failure 500 {object} map[string]string "error: Internal server error"
 // @Router /auth/login [post]
 func Login(c *gin.Context) {
-	var user models.User
+	var req UserLoginRequest
 	var foundUser models.User
 
-	if err := c.ShouldBindJSON(&user); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if user.Username == "" {
+	if req.Username == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "username is required"})
 		return
 	}
 
-	if user.Password == "" {
+	if req.Password == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "password is required"})
 		return
 	}
 
-	db.DB.Where("username = ?", user.Username).First(&foundUser)
+	db.DB.Where("username = ?", req.Username).First(&foundUser)
 	if foundUser.ID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	err := bcrypt.CompareHashAndPassword([]byte(foundUser.Password), []byte(user.Password))
+	err := bcrypt.CompareHashAndPassword([]byte(foundUser.Password), []byte(req.Password))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return

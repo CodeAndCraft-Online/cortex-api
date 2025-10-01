@@ -2,11 +2,13 @@ package subs
 
 import (
 	handlers "github.com/CodeAndCraft-Online/cortex-api/internal/handlers"
+	middleware "github.com/CodeAndCraft-Online/cortex-api/pkg"
 	"github.com/gin-gonic/gin"
 )
 
 func RegisterSubRoutes(router *gin.RouterGroup) {
 	subRoutes := router.Group("/sub")
+	subRoutes.Use(middleware.AuthMiddleware())
 	{
 		subRoutes.GET("/", handlers.GetSubs)
 		subRoutes.GET("/sub/:subID/postCount", handlers.GetPostCountPerSub)

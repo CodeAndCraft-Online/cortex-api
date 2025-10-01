@@ -2,11 +2,13 @@ package comments
 
 import (
 	"github.com/CodeAndCraft-Online/cortex-api/internal/handlers"
+	middleware "github.com/CodeAndCraft-Online/cortex-api/pkg"
 	"github.com/gin-gonic/gin"
 )
 
 func RegisterCommentsRoutes(router *gin.RouterGroup) {
 	comments := router.Group("/comments")
+	comments.Use(middleware.AuthMiddleware())
 	{
 		// Individual comment CRUD operations
 		comments.GET("/:id", handlers.GetCommentByID)   // Get comment by ID (public)

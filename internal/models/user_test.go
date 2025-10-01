@@ -31,21 +31,20 @@ func TestUser_JSONSerialization(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, float64(1), jsonMap["ID"])
-	assert.Equal(t, "testuser", jsonMap["Username"])
-	assert.Equal(t, "hashedpassword", jsonMap["Password"])
-	assert.Contains(t, jsonMap, "CreatedAt")
-	assert.Equal(t, "refreshtoken123", jsonMap["RefreshToken"])
-	assert.Contains(t, jsonMap, "TokenExpires")
+	assert.Equal(t, "testuser", jsonMap["username"])
+	assert.Nil(t, jsonMap["Password"]) // Password is omitted in JSON due to `json:"-"`
+	assert.Contains(t, jsonMap, "created_at")
+	// RefreshToken and TokenExpires are omitted in JSON due to `json:"-"`
+	assert.NotContains(t, jsonMap, "RefreshToken")
+	assert.NotContains(t, jsonMap, "TokenExpires")
 }
 
 func TestUser_JSONUnmarshaling(t *testing.T) {
 	jsonStr := `{
 		"ID": 1,
-		"Username": "testuser",
+		"username": "testuser",
 		"Password": "hashedpassword",
-		"CreatedAt": "2023-01-01T00:00:00Z",
-		"RefreshToken": "refreshtoken123",
-		"TokenExpires": "2023-01-02T00:00:00Z"
+		"created_at": "2023-01-01T00:00:00Z"
 	}`
 
 	var user User
@@ -55,13 +54,12 @@ func TestUser_JSONUnmarshaling(t *testing.T) {
 	assert.Equal(t, uint(1), user.ID)
 	assert.Equal(t, "testuser", user.Username)
 	assert.Equal(t, "hashedpassword", user.Password)
-	assert.Equal(t, "refreshtoken123", *user.RefreshToken)
+	assert.Nil(t, user.RefreshToken)           // Not in JSON due to json:"-"
+	assert.True(t, user.TokenExpires.IsZero()) // Not in JSON due to json:"-"
 
 	// Verify timestamps were parsed
 	expectedCreatedAt, _ := time.Parse(time.RFC3339, "2023-01-01T00:00:00Z")
-	expectedTokenExpires, _ := time.Parse(time.RFC3339, "2023-01-02T00:00:00Z")
 	assert.True(t, expectedCreatedAt.Equal(user.CreatedAt))
-	assert.True(t, expectedTokenExpires.Equal(user.TokenExpires))
 }
 
 func TestUser_EmptyStruct(t *testing.T) {
