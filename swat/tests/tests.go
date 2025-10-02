@@ -92,16 +92,53 @@ func RunPostsTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, er
 		fmt.Printf("   Created test user: %s\n", username)
 	}
 
-	// Test 1: Create a new post
+	// Create a test sub first (posts require a sub_id)
+	subData := map[string]interface{}{
+		"name":        "posttestsub",
+		"description": "A test sub for post testing",
+		"private":     false,
+	}
 	start := swat.StartTime()
-	postData := map[string]string{
+	resp, responseBody, err := client.MakeRequest("POST", "/sub/sub", subData, nil)
+	duration := swat.Elapsed(start)
+	result := swat.NewTestResult("Create test sub for posts", duration, err)
+	if err == nil && resp.StatusCode != 201 {
+		result.Status = "FAIL"
+		result.Error = fmt.Sprintf("Expected status 201, got %d", resp.StatusCode)
+	}
+	results = append(results, result)
+
+	var subResponse map[string]interface{}
+	if err == nil && resp.StatusCode == 201 {
+		json.Unmarshal(responseBody, &subResponse)
+	}
+
+	if subResponse == nil || subResponse["id"] == nil {
+		// Cannot proceed with post tests without a sub
+		result = swat.NewTestResult("Create new post", 0, fmt.Errorf("no sub ID available to create post"))
+		results = append(results, result)
+		result = swat.NewTestResult("Get all posts", 0, fmt.Errorf("no sub available to test posts"))
+		results = append(results, result)
+		result = swat.NewTestResult("Get post by ID", 0, fmt.Errorf("no sub available to test posts"))
+		results = append(results, result)
+		result = swat.NewTestResult("Get comments for post", 0, fmt.Errorf("no sub available to test posts"))
+		results = append(results, result)
+		return results, nil
+	}
+
+	subID := fmt.Sprintf("%.0f", subResponse["id"].(float64))
+
+	// Test 1: Create a new post
+	start = swat.StartTime()
+	postData := map[string]interface{}{
 		"title":   "Test Post Title",
 		"content": "This is a test post content for SWAT testing.",
+		"sub_id":  subID,
 	}
 	resp, body, err := client.MakeRequest("POST", "/posts/", postData, nil)
-	duration := swat.Elapsed(start)
+	duration = swat.Elapsed(start)
 
-	result := swat.NewTestResult("Create new post", duration, err)
+	result = swat.NewTestResult("Create new post", duration, err)
 	if err == nil && resp.StatusCode != 201 {
 		result.Status = "FAIL"
 		result.Error = fmt.Sprintf("Expected status 201, got %d", resp.StatusCode)
@@ -152,7 +189,7 @@ func RunPostsTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, er
 		}
 		results = append(results, result)
 	} else {
-		result := swat.NewTestResult("Get post by ID", 0, fmt.Errorf("no post ID available to test"))
+		result = swat.NewTestResult("Get post by ID", 0, fmt.Errorf("no post ID available to test"))
 		results = append(results, result)
 
 		result = swat.NewTestResult("Get comments for post", 0, fmt.Errorf("no post ID available to test"))
@@ -190,23 +227,55 @@ func RunCommentsTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult,
 		return results, nil
 	}
 
-	// Create a test post first
-	postData := map[string]interface{}{
-		"title":   "Test Post for Comments",
-		"content": "This post will have comments for testing.",
+	// Create a test sub first for post creation
+	subData := map[string]interface{}{
+		"name":        "commenttestsub",
+		"description": "A test sub for comment testing",
+		"private":     false,
 	}
-	resp, body, err := client.MakeRequest("POST", "/posts/", postData, nil)
-	duration := swat.Elapsed(swat.StartTime())
-	result := swat.NewTestResult("Create test post for comments", duration, err)
+	subStart := swat.StartTime()
+	resp, responseBody, err := client.MakeRequest("POST", "/sub/sub", subData, nil)
+	subDuration := swat.Elapsed(subStart)
+	result := swat.NewTestResult("Create test sub for comments", subDuration, err)
 	if err == nil && resp.StatusCode != 201 {
 		result.Status = "FAIL"
 		result.Error = fmt.Sprintf("Expected status 201, got %d", resp.StatusCode)
 	}
 	results = append(results, result)
 
-	var postResponse map[string]interface{}
+	var subResponse map[string]interface{}
 	if err == nil && resp.StatusCode == 201 {
-		json.Unmarshal(body, &postResponse)
+		json.Unmarshal(responseBody, &subResponse)
+	}
+
+	if subResponse == nil || subResponse["id"] == nil {
+		result = swat.NewTestResult("Create test post for comments", 0, fmt.Errorf("no sub ID available"))
+		results = append(results, result)
+		result = swat.NewTestResult("Create comment", 0, fmt.Errorf("no sub available"))
+		results = append(results, result)
+		return results, nil
+	}
+
+	subID := fmt.Sprintf("%.0f", subResponse["id"].(float64))
+
+	// Create a test post first
+	postData := map[string]interface{}{
+		"title":   "Test Post for Comments",
+		"content": "This post will have comments for testing.",
+		"sub_id":  subID,
+	}
+	postResp, postBody, postErr := client.MakeRequest("POST", "/posts/", postData, nil)
+	duration := swat.Elapsed(swat.StartTime())
+	result = swat.NewTestResult("Create test post for comments", duration, postErr)
+	if postErr == nil && postResp.StatusCode != 201 {
+		result.Status = "FAIL"
+		result.Error = fmt.Sprintf("Expected status 201, got %d", postResp.StatusCode)
+	}
+	results = append(results, result)
+
+	var postResponse map[string]interface{}
+	if postErr == nil && postResp.StatusCode == 201 {
+		json.Unmarshal(postBody, &postResponse)
 	}
 
 	if postResponse == nil || postResponse["id"] == nil {
@@ -229,18 +298,18 @@ func RunCommentsTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult,
 		"content": "This is a test comment.",
 	}
 	start := swat.StartTime()
-	resp, body, err = client.MakeRequest("POST", "/comments/comments", commentData, nil)
+	commentResp, commentBody, commentErr := client.MakeRequest("POST", "/comments/comments", commentData, nil)
 	duration = swat.Elapsed(start)
-	result = swat.NewTestResult("Create comment", duration, err)
-	if err == nil && resp.StatusCode != 201 {
+	result = swat.NewTestResult("Create comment", duration, commentErr)
+	if commentErr == nil && commentResp.StatusCode != 201 {
 		result.Status = "FAIL"
-		result.Error = fmt.Sprintf("Expected status 201, got %d", resp.StatusCode)
+		result.Error = fmt.Sprintf("Expected status 201, got %d", commentResp.StatusCode)
 	}
 	results = append(results, result)
 
 	var commentResponse map[string]interface{}
-	if err == nil && resp.StatusCode == 201 {
-		json.Unmarshal(body, &commentResponse)
+	if commentErr == nil && commentResp.StatusCode == 201 {
+		json.Unmarshal(commentBody, &commentResponse)
 	}
 
 	// Test 2: Get comment by ID (if we have a comment)
@@ -460,7 +529,7 @@ func RunSubsTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, err
 		"invitee_username": "inviteetest",
 	}
 	start = swat.StartTime()
-	resp, _, err = client.MakeRequest("POST", "/sub/sub/"+subID+"/invite", inviteData, nil)
+	_, _, err = client.MakeRequest("POST", "/sub/sub/"+subID+"/invite", inviteData, nil)
 	duration = swat.Elapsed(start)
 	result = swat.NewTestResult("Invite user to sub", duration, err)
 	// This might fail depending on sub privacy, allow various status codes
@@ -491,10 +560,40 @@ func RunVotesTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, er
 		return results, nil
 	}
 
+	// Create a test sub first for post creation
+	subData := map[string]interface{}{
+		"name":        "votetestsub",
+		"description": "A test sub for vote testing",
+		"private":     false,
+	}
+	start := swat.StartTime()
+	resp, responseBody, err := client.MakeRequest("POST", "/sub/sub", subData, nil)
+	duration := swat.Elapsed(start)
+	result := swat.NewTestResult("Create test sub for votes", duration, err)
+	if err == nil && resp.StatusCode != 201 {
+		result.Status = "FAIL"
+		result.Error = fmt.Sprintf("Expected status 201, got %d", resp.StatusCode)
+	}
+	results = append(results, result)
+
+	var subResponse map[string]interface{}
+	if err == nil && resp.StatusCode == 201 {
+		json.Unmarshal(responseBody, &subResponse)
+	}
+
+	if subResponse == nil || subResponse["id"] == nil {
+		result := swat.NewTestResult("Create test post for voting", 0, fmt.Errorf("no sub ID available"))
+		results = append(results, result)
+		return results, nil
+	}
+
+	subID := fmt.Sprintf("%.0f", subResponse["id"].(float64))
+
 	// Create a test post to vote on
 	postData := map[string]interface{}{
 		"title":   "Test Post for Voting",
 		"content": "This post will be voted on for testing.",
+		"sub_id":  subID,
 	}
 	resp, body, err := client.MakeRequest("POST", "/posts/", postData, nil)
 	if err != nil {
@@ -523,9 +622,9 @@ func RunVotesTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, er
 	upvoteData := map[string]interface{}{
 		"post_id": postID,
 	}
-	start := swat.StartTime()
+	start = swat.StartTime()
 	resp, _, err = client.MakeRequest("POST", "/vote/upvote", upvoteData, nil)
-	duration := swat.Elapsed(start)
+	duration = swat.Elapsed(start)
 	upvoteResult := swat.NewTestResult("Upvote post", duration, err)
 	if err == nil && resp.StatusCode != 200 {
 		upvoteResult.Status = "FAIL"
@@ -550,16 +649,16 @@ func RunUsersTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, er
 	var results []swat.TestResult
 
 	// Create a test user for users tests
-	_, err := client.CreateTestUser("usertest", "password123")
+	actualUsername, err := client.CreateTestUser("usertest", "password123")
 	if err != nil {
 		result := swat.NewTestResult("Create test user for users", 0, err)
 		results = append(results, result)
 		return results, nil
 	}
 
-	// Test 1: Get public user profile
+	// Test 1: Get public user profile (use actual username)
 	start := swat.StartTime()
-	resp, _, err := client.MakeRequest("GET", "/user/usertest", nil, nil)
+	resp, _, err := client.MakeRequest("GET", "/user/"+actualUsername, nil, nil)
 	duration := swat.Elapsed(start)
 	result := swat.NewTestResult("Get public user profile", duration, err)
 	if err == nil && resp.StatusCode != 200 {
@@ -599,16 +698,18 @@ func RunUsersTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, er
 		"name":    "invitecomm",
 		"private": true,
 	}
-	var subBody []byte
-	resp, subBody, err = client.MakeRequest("POST", "/sub/sub", subData, nil)
-	if err != nil {
-		result = swat.NewTestResult("Create private sub for invite test", 0, err)
-		results = append(results, result)
-		return results, nil
+	subStart := swat.StartTime()
+	subResp, subBody, subErr := client.MakeRequest("POST", "/sub/sub", subData, nil)
+	subDuration := swat.Elapsed(subStart)
+	result = swat.NewTestResult("Create private sub for invite test", subDuration, subErr)
+	if subErr == nil && subResp.StatusCode != 201 {
+		result.Status = "FAIL"
+		result.Error = fmt.Sprintf("Expected status 201, got %d", subResp.StatusCode)
 	}
+	results = append(results, result)
 
 	var subResponse map[string]interface{}
-	if resp.StatusCode == 201 && err == nil {
+	if subResp.StatusCode == 201 && subErr == nil {
 		json.Unmarshal(subBody, &subResponse)
 	}
 
@@ -627,7 +728,7 @@ func RunUsersTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, er
 			"invitee_username": inviteeUsername,
 		}
 		start = swat.StartTime()
-		resp, _, err = client.MakeRequest("POST", "/sub/sub/"+subID+"/invite", inviteData, nil)
+		_, _, err = client.MakeRequest("POST", "/sub/sub/"+subID+"/invite", inviteData, nil)
 		duration = swat.Elapsed(start)
 		result = swat.NewTestResult("Send user invite", duration, err)
 		// Invite might succeed or fail depending on implementation, record result
@@ -654,8 +755,52 @@ func RunUsersTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, er
 
 func RunSecurityTests(client *swat.SWATClient, verbose bool) ([]swat.TestResult, error) {
 	var results []swat.TestResult
-	// TODO: Implement security tests
-	result := swat.NewTestResult("Security tests not implemented", 0, fmt.Errorf("not implemented"))
-	results = append(results, result)
+
+	// Test 1: Unauthorized access to protected endpoint
+	result1 := swat.NewTestResult("Test protected endpoint without auth", 0, fmt.Errorf("implemented"))
+	start1 := swat.StartTime()
+	resp1, _, err1 := client.MakeRequest("GET", "/user/profile", nil, nil)
+	duration1 := swat.Elapsed(start1)
+	result1.Duration = duration1
+	if err1 != nil {
+		result1.Error = err1.Error()
+		result1.Status = "PASS" // Error is expected for unauthorized access
+	} else if resp1.StatusCode == 401 {
+		result1.Status = "PASS" // 401 Unauthorized is correct
+	} else {
+		result1.Error = fmt.Sprintf("Expected 401, got %d", resp1.StatusCode)
+	}
+	results = append(results, result1)
+
+	// Test 2: SQL injection attempt in route parameter
+	// This tests if the API properly sanitizes route parameters
+	result2 := swat.NewTestResult("SQL injection in route parameter", 0, fmt.Errorf("implemented"))
+	start2 := swat.StartTime()
+	resp2, _, err2 := client.MakeRequest("GET", "/posts/' OR '1'='1", nil, nil)
+	duration2 := swat.Elapsed(start2)
+	result2.Duration = duration2
+	// Should return 404 or 400, not 500 (which would indicate injection worked)
+	if err2 == nil && resp2.StatusCode == 404 {
+		result2.Status = "PASS"
+	} else if err2 == nil && resp2.StatusCode == 400 {
+		result2.Status = "PASS"
+	} else {
+		result2.Error = fmt.Sprintf("Unexpected response - status: %d, error: %v", resp2.StatusCode, err2)
+	}
+	results = append(results, result2)
+
+	// Test 3: Attempt to access non-existent endpoint
+	result3 := swat.NewTestResult("Access to non-existent endpoint", 0, fmt.Errorf("implemented"))
+	start3 := swat.StartTime()
+	resp3, _, err3 := client.MakeRequest("GET", "/nonexistent", nil, nil)
+	duration3 := swat.Elapsed(start3)
+	result3.Duration = duration3
+	if err3 == nil && resp3.StatusCode == 404 {
+		result3.Status = "PASS"
+	} else {
+		result3.Error = fmt.Sprintf("Expected 404, got %d", resp3.StatusCode)
+	}
+	results = append(results, result3)
+
 	return results, nil
 }
