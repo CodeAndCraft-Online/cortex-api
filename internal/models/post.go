@@ -17,10 +17,10 @@ type PostResponse struct {
 }
 
 type Post struct {
-	ID        uint `gorm:"primaryKey"`
-	Title     string
-	SubID     uint `gorm:"not null"`
-	Content   string
+	ID        uint    `gorm:"primaryKey"`
+	Title     string  `json:"title" binding:"required"`
+	SubID     uint    `json:"sub_id" binding:"required"`
+	Content   string  `json:"content" binding:"required"`
 	Upvotes   int     `json:"upvotes"`
 	Downvotes int     `json:"downvotes"`
 	ImageURL  *string `json:"imageURL,omitempty"` // Link to an image
